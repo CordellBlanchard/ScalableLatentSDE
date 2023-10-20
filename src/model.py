@@ -5,10 +5,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.distributions as td
-import matplotlib.pyplot as plt
-
-from torchvision import datasets, transforms
-from torch.utils.data import Dataset, DataLoader
 
 class CustomTransformer(nn.Module):
     def __init__(self, input_dim, output_dim, nhead, num_layers):
@@ -102,7 +98,6 @@ class ST_LR(nn.Module):
 
         return z_mus, z_sigmas, z_samples
 
-
 class GatedTransitionFunction(nn.Module):
     def __init__(self, input_size, hidden_size = None):
         super().__init__()
@@ -136,7 +131,7 @@ class GatedTransitionFunction(nn.Module):
         self.W_mp.bias.data.fill_(0)
 
 
-    class EmissionNetwork(nn.Module):
+class EmissionNetwork(nn.Module):
     def __init__(self, input_size, hidden_size, observation_size):
         super(EmissionNetwork, self).__init__()
 
@@ -170,5 +165,58 @@ class GatedTransitionFunction(nn.Module):
 
     def forward(self, x):
         return self.layers(x), self.layers2(x)
+    
+
+class VLBLoss(nn.Module):
+
+    def __init__(self):
+        super().__init__()
+
+    def forward(
+            self,
+            # Output of the ST-LR
+            z_mus,
+            z_sigmas,
+            # Output of the emission network (for each z_sample)
+            emission_mus,
+            emission_sigmas,
+            # Output of the transition network (again, for each z_sample)
+            transition_mus,
+            transition_sigmas,
+            # Ground truth observations
+            x_gt
+        ):
+
+        # This is the distribution of p(z0). Inserting this here simplifies control flow in the for loop.
+        transition_mus    = torch.cat([torch.zeros_like(z_mus[:,0:1]), transition_mus], dim=1)
+        transition_sigmas = torch.cat([torch.ones_like(z_sigmas[:,0:1]), transition_sigmas], dim=1)
+
+        loss = 0
+        # This for loop calculates the two summations in equation (6)
+        T = z_mus.shape[1]
+
+        for t in range(T):
+            # This is p(xt | zt)
+            observation_distribution = td.normal.Normal(emission_mus[:,t], emission_sigmas[:,t])
+
+            # This is q(zt | z(t-1), x)
+            # print(z_mus[:,t].shape)
+            posterior_distribution = td.normal.Normal(z_mus[:,t], z_sigmas[:,t])
+
+            # Add the expected value of ln p(xt | zt), with respect to q(zt | z(t-1), x).
+            # We approximate the expected value with a single sample.
+            loss += observation_distribution.log_prob(x_gt[:,t].reshape(-1,1))
+
+            # Sample z(t-1) according to q(z(t-1) | z(t-2), x)
+            # This then gives us two distributions for z(t):
+            #   - The estimated posterior q(z(z) | z(t-1), x)
+            #   - The transition distribution p(z(t) | z(t-1))
+
+            loss -= td.kl_divergence(
+                posterior_distribution,                                            # q(zt | z(t-1), x)
+                td.normal.Normal(transition_mus[:,t], transition_sigmas[:,t])          # p(zt | z(t-1))
+            )
+
+        return -1*loss/T
 
     
