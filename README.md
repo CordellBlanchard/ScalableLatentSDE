@@ -77,10 +77,7 @@ To create a new dataset, create a directory in the src/datasets folder. In that 
 The function can take any arguments you define, be sure to set these arguments in the config file under dataset_params. Also be sure to set dataset_name to the same name as your function. Finally, add an import for the function you created in src/datasets/__init__.py
 
 ### Loggers
-All loggers should be added to the src/logger.py file. The logger_name should be set as the new logger's class name. Any parameters needed by the logger can be set in logger_params, which you can access in the init of the logger through config["logger_params"] as a dictionary. The class should implement the following interface:
-```
-
-```
+All loggers should be added to the src/logger.py file. The logger_name should be set as the new logger's class name. Any parameters needed by the logger can be set in logger_params, which you can access in the init of the logger through config["logger_params"] as a dictionary. The class should implement the same interface as implemented by the PrintLogger in src/logger.py
 
 ### Trainers
 All trainers should be added to the src/trainers directory and imported in src/trainers/__init__.py. The class should have the following initialization signature:
