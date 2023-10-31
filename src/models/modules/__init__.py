@@ -8,6 +8,4 @@ from .inference_networks import StructuredInferenceLR
 from .transition_models import (
     DeterministicTransitionFunction,
     GatedTransitionFunction,
-    SDETransitionTimeIndep,
-    SDETransitionTimeDep,
 )
