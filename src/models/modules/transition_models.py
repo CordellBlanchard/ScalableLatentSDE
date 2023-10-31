@@ -8,8 +8,6 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 
-import torchsde
-
 
 class DeterministicTransitionFunction(nn.Module):
     """
