@@ -34,14 +34,15 @@ class StateSpaceModel(nn.Module):
         self.transition_model = transition_model
         self.inference_model = inference_model
 
-    def forward(self, observations: torch.Tensor):
+    def forward(self, observations: Any):
         """
         Forward pass through the model, mostly used for training
 
         Parameters
         ----------
-        observations : torch.Tensor
-            Observations, shape = (batch_size, n_time_steps, obs_dim)
+        observations : Any
+            Could be a torch.Tensor with shape = (batch_size, n_time_steps, obs_dim)
+            Or anything else, depending on the model
 
         Returns
         -------
