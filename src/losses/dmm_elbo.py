@@ -1,7 +1,7 @@
 """
 ELBO loss for the DMM model, both continuous and discrete observations
 """
-from typing import Dict, Union, Tuple
+from typing import Dict, Union, Tuple, List
 
 import torch
 from torch import nn
