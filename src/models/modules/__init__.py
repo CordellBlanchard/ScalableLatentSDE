@@ -9,3 +9,7 @@ from .transition_models import (
     DeterministicTransitionFunction,
     GatedTransitionFunction,
 )
+from .sde_transition_models import (
+    SDETransitionTimeIndep,
+    SDETransitionTimeDep,
+)
