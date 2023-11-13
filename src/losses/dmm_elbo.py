@@ -127,3 +127,47 @@ class DMMContinuousELBO(nn.Module):
             "annealing_factor": annealing_factor,
         }
         return total_loss, logging
+
+    def rolling_window_eval(
+        self,
+        model: nn.Module,
+        data: torch.Tensor,
+        eval_window_shifts: List[int],
+        n_eval_windows: int,
+    ) -> Dict[int, List[float]]:
+        """
+        Rolling window evaluation of RMSE
+
+        Parameters
+        ----------
+        model : nn.Module
+            Model to use for prediction
+        data : torch.Tensor
+            Data to use for evaluation, observations, shape = (batch_size, time_steps, obs_dim)
+        eval_window_shifts : List[int]
+            List of shifts to use for evaluation
+        n_eval_windows : int
+            Number of times to evaluate (each time shifts by 1)
+
+        Returns
+        -------
+        Dict[int, List[float]]
+            Dictionary of RMSE for each shift
+        """
+        max_window_shift = max(eval_window_shifts)
+        rolling_window_rmse = {i: [] for i in eval_window_shifts}
+        for n in range(n_eval_windows):
+            n_observations = data.shape[1] - n - max_window_shift
+            if n_observations <= 0:
+                print(
+                    "Warning: during RMSE rolling window evaluation, n_observations <= 0"
+                )
+                continue
+            observations = data[:, :n_observations, :]
+            preds, _ = model.predict_future(observations, max_window_shift)
+            for shift in eval_window_shifts:
+                shift_preds = preds[:, n_observations + shift - 1, :]
+                shift_obs = data[:, n_observations + shift - 1, :]
+                rmse = torch.sqrt(torch.mean((shift_preds - shift_obs) ** 2)).item()
+                rolling_window_rmse[shift].append(rmse)
+        return rolling_window_rmse

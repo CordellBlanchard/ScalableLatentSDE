@@ -115,24 +115,15 @@ class DeepTrainer:
                     eval_metrics[key].append(value)
 
                 # Moving window RMSE
-                max_window_shift = max(self.params["eval_window_shifts"])
-                n_eval_windows = self.params["n_eval_windows"]
-                for n in range(n_eval_windows):
-                    n_observations = data.shape[1] - n - max_window_shift
-                    if n_observations <= 0:
-                        print(
-                            "Warning: during RMSE rolling window evaluation, n_observations <= 0"
-                        )
-                        continue
-                    observations = data[:, :n_observations, :]
-                    preds, _ = self.model.predict_future(observations, max_window_shift)
-                    for shift in self.params["eval_window_shifts"]:
-                        shift_preds = preds[:, n_observations + shift - 1, :]
-                        shift_obs = data[:, n_observations + shift - 1, :]
-                        rmse = torch.sqrt(
-                            torch.mean((shift_preds - shift_obs) ** 2)
-                        ).item()
-                        rolling_window_rmse[shift].append(rmse)
+                rolling_window_samples = self.loss.rolling_window_eval(
+                    self.model,
+                    data,
+                    self.params["eval_window_shifts"],
+                    self.params["n_eval_windows"],
+                )
+
+                for shift in self.params["eval_window_shifts"]:
+                    rolling_window_rmse[shift].extend(rolling_window_samples[shift])
 
             for key in rolling_window_rmse:
                 rolling_window_rmse[key] = sum(rolling_window_rmse[key]) / len(
