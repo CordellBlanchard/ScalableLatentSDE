@@ -62,6 +62,33 @@ class newLoss(nn.Module):
             Used for logging
         """
         # implementation here
+    def rolling_window_eval(
+        self,
+        model: nn.Module,
+        data: torch.Tensor,
+        eval_window_shifts: List[int],
+        n_eval_windows: int,
+    ) -> Dict[int, List[float]]:
+        """
+        Rolling window evaluation of RMSE
+
+        Parameters
+        ----------
+        model : nn.Module
+            Model to use for prediction
+        data : torch.Tensor
+            Data to use for evaluation, observations, shape = (batch_size, time_steps, obs_dim)
+        eval_window_shifts : List[int]
+            List of shifts to use for evaluation
+        n_eval_windows : int
+            Number of times to evaluate (each time shifts by 1)
+
+        Returns
+        -------
+        Dict[int, List[float]]
+            Dictionary of RMSE for each shift
+        """
+        # implementation here, see src/losses/dmm_elbo.py for an example
 ```
 The dictionary can have any float values needed to be logged during training, validation, and testing. Please ensure that there are not nested dictionaries, it should be a simple dictionary of keys and float values.
 
