@@ -62,7 +62,10 @@ class DeepTrainer:
             for data in self.dataloaders["train"]:
                 optimizer.zero_grad()
 
-                data = data.to(device)
+                if isinstance(data, list):
+                    data = [d.to(device) for d in data]
+                else:
+                    data = data.to(device)
 
                 model_output = self.model(data)
                 loss, to_log = self.loss(*model_output, data, epoch)
@@ -100,11 +103,15 @@ class DeepTrainer:
         Returns
         -------
         """
+        device = self.params["device"]
         with torch.no_grad():
             eval_metrics = {}
             rolling_window_rmse = {i: [] for i in self.params["eval_window_shifts"]}
             for data in dataloader:
-                data = data.to(self.params["device"])
+                if isinstance(data, list):
+                    data = [d.to(device) for d in data]
+                else:
+                    data = data.to(device)
 
                 model_output = self.model(data)
                 _, to_log = self.loss(*model_output, data, epoch)
