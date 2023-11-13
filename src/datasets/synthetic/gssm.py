@@ -28,6 +28,8 @@ class GSSM(Dataset):
         Number of samples to generate
     n_time_steps: int
         Number of time steps to generate
+    return_times: bool
+        Whether to return the time steps
 
     Attributes
     ----------
@@ -44,17 +46,22 @@ class GSSM(Dataset):
         gen_initial_latent: Callable[[int], np.array],
         n_samples: int = 5000,
         n_time_steps: int = 25,
+        return_times: bool = False,
     ):
         self.transition_func = transition_func
         self.emission_func = emission_func
         self.generate_initial_latent = gen_initial_latent
         self.n_samples = n_samples
         self.n_time_steps = n_time_steps
+        self.return_times = return_times
 
         # Generate data using the given functions
         observations, latent_variables = self.generate_data()
         self.observations = torch.from_numpy(observations).float()
         self.latent_variables = torch.from_numpy(latent_variables).float()
+
+        if return_times:
+            self.times = torch.from_numpy(np.arange(n_time_steps)).float()
 
     def generate_data(self) -> Tuple[np.array, np.array]:
         """
@@ -121,4 +128,6 @@ class GSSM(Dataset):
         return self.n_samples
 
     def __getitem__(self, idx):
+        if self.return_times:
+            return self.observations[idx], self.times
         return self.observations[idx]

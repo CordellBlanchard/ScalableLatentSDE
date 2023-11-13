@@ -17,9 +17,13 @@ class LinearGSSM(GSSM):
         Number of samples to generate
     n_time_steps: int
         Number of time steps to generate
+    return_times: bool
+        Whether to return the time steps
     """
 
-    def __init__(self, n_samples: int = 5000, n_time_steps: int = 25):
+    def __init__(
+        self, n_samples: int = 5000, n_time_steps: int = 25, return_times: bool = False
+    ):
         std_z = np.sqrt(10)
         std_x = np.sqrt(20)
 
@@ -33,7 +37,12 @@ class LinearGSSM(GSSM):
             return np.random.normal(0, std_z, size=(n_samples, 1))
 
         super().__init__(
-            transition_func, emission_func, gen_initial_latent, n_samples, n_time_steps
+            transition_func,
+            emission_func,
+            gen_initial_latent,
+            n_samples,
+            n_time_steps,
+            return_times,
         )
 
 
@@ -52,6 +61,8 @@ class NonLinearGSSM(GSSM):
         Number of samples to generate
     n_time_steps: int
         Number of time steps to generate
+    return_times: bool
+        Whether to return the time steps
     """
 
     def __init__(
@@ -60,6 +71,7 @@ class NonLinearGSSM(GSSM):
         beta: float = -0.1,
         n_samples: int = 5000,
         n_time_steps: int = 25,
+        return_times: bool = False,
     ):
         def transition_func(prev_latent: np.array, t: int) -> np.array:
             z0 = prev_latent[:, 0]
@@ -76,5 +88,10 @@ class NonLinearGSSM(GSSM):
             return np.random.normal(0, 1, size=(n_samples, 2))
 
         super().__init__(
-            transition_func, emission_func, gen_initial_latent, n_samples, n_time_steps
+            transition_func,
+            emission_func,
+            gen_initial_latent,
+            n_samples,
+            n_time_steps,
+            return_times,
         )

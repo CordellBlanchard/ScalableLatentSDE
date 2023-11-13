@@ -49,6 +49,7 @@ def get_gssm_dataloaders(
     n_test_samples: int,
     n_time_steps: int,
     batch_size: int,
+    return_times: bool = False,
 ) -> Dict[str, DataLoader]:
     """
     General function to get dataloaders for GSSM datasets
@@ -67,15 +68,17 @@ def get_gssm_dataloaders(
         Number of time steps
     batch_size : int
         Batch size
+    return_times: bool = False
+        If True, return time steps as well with observations
 
     Returns
     -------
     Dict[str, DataLoader]
         Dictionary of dataloaders for train, val, and test sets
     """
-    train_dataset = dataset_class(n_train_samples, n_time_steps)
-    val_dataset = dataset_class(n_val_samples, n_time_steps)
-    test_dataset = dataset_class(n_test_samples, n_time_steps)
+    train_dataset = dataset_class(n_train_samples, n_time_steps, return_times)
+    val_dataset = dataset_class(n_val_samples, n_time_steps, return_times)
+    test_dataset = dataset_class(n_test_samples, n_time_steps, return_times)
 
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
