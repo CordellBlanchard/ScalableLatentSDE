@@ -1,0 +1,10 @@
+dataset_name: "physionet"
+dataset_params:
+  train_frac: 0.8
+  val_frac: 0.1
+  test_frac: 0.1
+  imputation_method: "missing"
+  discretization_method: "none"
+  batch_size: 512
+
+
