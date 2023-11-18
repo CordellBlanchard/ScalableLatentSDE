@@ -43,9 +43,7 @@ class StructuredInferenceLR(nn.Module):
         )
         self.combine_layer = nn.Sequential(nn.Linear(latent_dim, latent_dim), nn.Tanh())
         self.mu_layer = nn.Linear(latent_dim, latent_dim)
-        self.sigma_layer = nn.Sequential(
-            nn.Linear(latent_dim, latent_dim), nn.Softplus()
-        )
+        self.log_var_layer = nn.Linear(latent_dim, latent_dim)
 
     def forward(
         self, observations: torch.Tensor
@@ -62,7 +60,7 @@ class StructuredInferenceLR(nn.Module):
         -------
         z_mus : torch.Tensor
             Mean for the latent variables, shape = (batch_size, n_time_steps, latent_dim)
-        z_sigmas : torch.Tensor
+        z_log_vars : torch.Tensor
             Standard deviation for the latent variables,
             shape = (batch_size, n_time_steps, latent_dim)
         z_samples : torch.Tensor
@@ -92,32 +90,31 @@ class StructuredInferenceLR(nn.Module):
 
         # Predicting distributions for z and sampling z from these distributions
         z_mus = []
-        z_sigmas = []
-        z_samples = [torch.zeros(batch_size, self.latent_dim).to(observations.device)]
+        z_log_vars = []
+        curr_z = torch.zeros(batch_size, self.latent_dim).to(observations.device)
 
         for t in range(n_time_steps):
             # Combiner layer
             h_combined = (
-                self.combine_layer(z_samples[-1].reshape(batch_size, self.latent_dim))
+                self.combine_layer(curr_z.reshape(batch_size, self.latent_dim))
                 + lstm_out_left[:, t, :]
                 + lstm_out_right[:, t, :]
             ) / 3
             z_u = self.mu_layer(h_combined)
-            z_sigma = self.sigma_layer(h_combined)
+            z_log_var = self.log_var_layer(h_combined)
 
             # Sample z in a gradient friendly way (reparametrization trick)
-            curr_z = z_u + torch.randn_like(z_sigma) * z_sigma
+            curr_z = z_u + torch.randn_like(z_log_var) * torch.exp(0.5 * z_log_var)
 
             # Save mu, sigma, sample
             z_mus.append(z_u.reshape(batch_size, 1, self.latent_dim))
-            z_sigmas.append(z_sigma.reshape(batch_size, 1, self.latent_dim))
-            z_samples.append(curr_z.reshape(batch_size, 1, self.latent_dim))
+            z_log_vars.append(z_log_var.reshape(batch_size, 1, self.latent_dim))
 
         z_mus = torch.cat(z_mus, dim=1)
-        z_sigmas = torch.cat(z_sigmas, dim=1)
-        z_samples = torch.cat(z_samples[1:], dim=1)
+        z_log_vars = torch.cat(z_log_vars, dim=1)
+        z_samples = z_mus + torch.randn_like(z_log_vars) * torch.exp(0.5 * z_log_vars)
 
-        return (z_mus, z_sigmas), z_samples
+        return (z_mus, z_log_vars), z_samples
 
 
 class CustomTransformer(nn.Module):
@@ -146,10 +143,10 @@ class CustomTransformer(nn.Module):
         )
 
         self.decoder_layer = nn.TransformerDecoderLayer(
-            d_model=output_dim, nhead=nhead, dim_feedforward=64, batch_first=True
+            d_model=output_dim, nhead=nhead, dim_feedforward=16, batch_first=True
         )
         self.transformer_decoder = nn.TransformerDecoder(
-            self.decoder_layer, num_layers=2
+            self.decoder_layer, num_layers=1
         )
 
         # Linear Layer to match the output dimensionality
@@ -197,16 +194,12 @@ class TransformerSTLR(nn.Module):
         Dimension of the observations
     """
 
-    def __init__(self, latent_dim: int, obs_dim: int):
+    def __init__(self, latent_dim: int, obs_dim: int, nhead: int):
         super().__init__()
         self.latent_dim = latent_dim
         self.obs_dim = obs_dim
 
-        self.transformer = CustomTransformer(
-            obs_dim, latent_dim * 2, 1
-        )  # change 1 to something
-
-        self.soft_plus = nn.Softplus()
+        self.transformer = CustomTransformer(obs_dim, latent_dim * 2, nhead)
 
     def forward(
         self, x: torch.Tensor
@@ -223,7 +216,7 @@ class TransformerSTLR(nn.Module):
         -------
         z_mus : torch.Tensor
             Mean for the latent variables, shape = (batch_size, n_time_steps, latent_dim)
-        z_sigmas : torch.Tensor
+        z_log_vars : torch.Tensor
             Standard deviation for the latent variables,
             shape = (batch_size, n_time_steps, latent_dim)
         z_samples : torch.Tensor
@@ -245,12 +238,11 @@ class TransformerSTLR(nn.Module):
         tgt = self.transformer(x)
         tgt = tgt.reshape(batch_size, n_time_steps, 2, self.latent_dim)
 
-        # gather z_mus and z_sigmas from transformer output
+        # gather z_mus and z_log_vars from transformer output
         z_mus = tgt[:, :, 0, :]
-        z_sigmas = tgt[:, :, 1, :]
-        z_sigmas = self.soft_plus(z_sigmas)
-        z_samples = (
-            z_mus + torch.normal(0, 1, z_sigmas.shape).to(z_mus.device) * z_sigmas
-        )
+        z_log_vars = tgt[:, :, 1, :]
+        z_samples = z_mus + torch.normal(0, 1, z_log_vars.shape).to(
+            z_mus.device
+        ) * torch.exp(0.5 * z_log_vars)
 
-        return [z_mus, z_sigmas], z_samples
+        return [z_mus, z_log_vars], z_samples
