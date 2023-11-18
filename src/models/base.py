@@ -34,30 +34,15 @@ class StateSpaceModel(nn.Module):
         self.transition_model = transition_model
         self.inference_model = inference_model
 
-    def forward(self, observations: Any):
+    def forward(self, *args, **kwargs):
         """
-        Forward pass through the model, mostly used for training
+        Implementation left for the loss class
 
-        Parameters
-        ----------
-        observations : Any
-            Could be a torch.Tensor with shape = (batch_size, n_time_steps, obs_dim)
-            Or anything else, depending on the model
-
-        Returns
-        -------
-        latent_distribution: torch.Tensor or Tuple[torch.Tensor, torch.Tensor]
-            Output from the inference model, output shape depends on the model
-        emission_distribution: torch.Tensor or Tuple[torch.Tensor, torch.Tensor]
-            Output from the emission model, output shape depends on the model
-        transition_distribution: torch.Tensor or Tuple[torch.Tensor, torch.Tensor]
-            Output from the transition model, output shape depends on the model
+        Raises
+        ------
+        NotImplementedError
         """
-        latent_distribution, latent_samples = self.inference_model(observations)
-        emission_distribution = self.emission_model(latent_samples)
-        transition_distribution = self.transition_model(latent_samples)
-
-        return latent_distribution, emission_distribution, transition_distribution
+        raise NotImplementedError
 
     def predict_future(
         self, observations: torch.Tensor, n_future_time_steps: int = 0
