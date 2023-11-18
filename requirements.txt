@@ -3,3 +3,4 @@ numpy
 matplotlib
 wandb
 requests
+tqdm
