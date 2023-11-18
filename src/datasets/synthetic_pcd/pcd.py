@@ -183,64 +183,64 @@ def preds_to_category(preds):
             category.append(-1)
     return np.array(category)
 
-""" Function to return data to feed into models """
-def load_synthetic_data(fold_span = range(5), nsamples = {'train':500, 'valid':300, 'test':200}):
-    np.random.seed(0)
-    dset = {}
-    for fold in fold_span:
-        dset[fold] = {}
-        for k in ['train','valid','test']:
-            b, ys, subtype, subtype_oh, ldata = generate_synthetic(nsamples[k])
-            dset[fold][k]      = {}
-            dset[fold][k]['b'] = b
-            dset[fold][k]['x'] = ldata
-            dset[fold][k]['a'] = np.cumsum(np.ones_like(ldata[...,0])[...,None], axis=1)/5.
-            dset[fold][k]['m'] = np.ones_like(ldata[...,0])
-            ys_rshp = ys.reshape(-1,1)
-            ys_rshp = ys_rshp+0.1*np.random.randn(*ys_rshp.shape)
-            ys_seq  = ys_rshp - (np.cumsum(np.ones_like(ldata[...,0]), 1)-1)
-            m_ys_seq= (ys_seq>0)
-            ys_seq[~m_ys_seq] = 0.
-            m_ys_seq= m_ys_seq*1.
-            dset[fold][k]['ys_seq']     = ys_seq
-            dset[fold][k]['m_ys_seq']   = m_ys_seq
-            dset[fold][k]['ce']         = np.zeros((nsamples[k],1))
-            dset[fold][k]['subtype']    = subtype
-            dset[fold][k]['subtype_oh'] = subtype_oh
-    return dset
+# """ Function to return data to feed into models """
+# def load_synthetic_data(fold_span = range(5), nsamples = {'train':500, 'valid':300, 'test':200}):
+#     np.random.seed(0)
+#     dset = {}
+#     for fold in fold_span:
+#         dset[fold] = {}
+#         for k in ['train','valid','test']:
+#             b, ys, subtype, subtype_oh, ldata = generate_synthetic(nsamples[k])
+#             dset[fold][k]      = {}
+#             dset[fold][k]['b'] = b
+#             dset[fold][k]['x'] = ldata
+#             dset[fold][k]['a'] = np.cumsum(np.ones_like(ldata[...,0])[...,None], axis=1)/5.
+#             dset[fold][k]['m'] = np.ones_like(ldata[...,0])
+#             ys_rshp = ys.reshape(-1,1)
+#             ys_rshp = ys_rshp+0.1*np.random.randn(*ys_rshp.shape)
+#             ys_seq  = ys_rshp - (np.cumsum(np.ones_like(ldata[...,0]), 1)-1)
+#             m_ys_seq= (ys_seq>0)
+#             ys_seq[~m_ys_seq] = 0.
+#             m_ys_seq= m_ys_seq*1.
+#             dset[fold][k]['ys_seq']     = ys_seq
+#             dset[fold][k]['m_ys_seq']   = m_ys_seq
+#             dset[fold][k]['ce']         = np.zeros((nsamples[k],1))
+#             dset[fold][k]['subtype']    = subtype
+#             dset[fold][k]['subtype_oh'] = subtype_oh
+#     return dset
 
-""" Function to return data to feed into models """
-def load_synthetic_data_noisy(fold_span = range(5), nsamples = {'train':500, 'valid':300, 'test':200},
-                       distractor_dims_b = 0, sigma_ys = 0.1):
-    np.random.seed(0)
-    dset = {}
-    for fold in fold_span:
-        dset[fold] = {}
-        for k in ['train','valid','test']:
-            b, ys, subtype, subtype_oh, ldata = generate_synthetic(nsamples[k], noisy_ys= True)
-            dset[fold][k]      = {}
-            if distractor_dims_b == 0:
-                dset[fold][k]['b'] = b
-            elif distractor_dims_b > 0:
-                dset[fold][k]['b'] = np.concatenate((b, np.random.randn(b.shape[0], distractor_dims_b)), -1)
-            else:
-                raise ValueError('Bad setting for distractor_dims_b')
+# """ Function to return data to feed into models """
+# def load_synthetic_data_noisy(fold_span = range(5), nsamples = {'train':500, 'valid':300, 'test':200},
+#                        distractor_dims_b = 0, sigma_ys = 0.1):
+#     np.random.seed(0)
+#     dset = {}
+#     for fold in fold_span:
+#         dset[fold] = {}
+#         for k in ['train','valid','test']:
+#             b, ys, subtype, subtype_oh, ldata = generate_synthetic(nsamples[k], noisy_ys= True)
+#             dset[fold][k]      = {}
+#             if distractor_dims_b == 0:
+#                 dset[fold][k]['b'] = b
+#             elif distractor_dims_b > 0:
+#                 dset[fold][k]['b'] = np.concatenate((b, np.random.randn(b.shape[0], distractor_dims_b)), -1)
+#             else:
+#                 raise ValueError('Bad setting for distractor_dims_b')
                 
-            dset[fold][k]['x'] = ldata
-            dset[fold][k]['a'] = np.cumsum(np.ones_like(ldata[...,0])[...,None], axis=1)/5.
-            dset[fold][k]['m'] = np.ones_like(ldata[...,0])
-            ys_rshp = ys.reshape(-1,1)
-            ys_rshp = ys_rshp+sigma_ys*np.random.randn(*ys_rshp.shape)
-            ys_seq  = ys_rshp - (np.cumsum(np.ones_like(ldata[...,0]), 1)-1)
-            m_ys_seq= (ys_seq>0)
-            ys_seq[~m_ys_seq] = 0.
-            m_ys_seq= m_ys_seq*1.
-            dset[fold][k]['ys_seq']     = ys_seq
-            dset[fold][k]['m_ys_seq']   = m_ys_seq
-            dset[fold][k]['ce']         = np.zeros((nsamples[k],1))
-            dset[fold][k]['subtype']    = subtype
-            dset[fold][k]['subtype_oh'] = subtype_oh
-    return dset
+#             dset[fold][k]['x'] = ldata
+#             dset[fold][k]['a'] = np.cumsum(np.ones_like(ldata[...,0])[...,None], axis=1)/5.
+#             dset[fold][k]['m'] = np.ones_like(ldata[...,0])
+#             ys_rshp = ys.reshape(-1,1)
+#             ys_rshp = ys_rshp+sigma_ys*np.random.randn(*ys_rshp.shape)
+#             ys_seq  = ys_rshp - (np.cumsum(np.ones_like(ldata[...,0]), 1)-1)
+#             m_ys_seq= (ys_seq>0)
+#             ys_seq[~m_ys_seq] = 0.
+#             m_ys_seq= m_ys_seq*1.
+#             dset[fold][k]['ys_seq']     = ys_seq
+#             dset[fold][k]['m_ys_seq']   = m_ys_seq
+#             dset[fold][k]['ce']         = np.zeros((nsamples[k],1))
+#             dset[fold][k]['subtype']    = subtype
+#             dset[fold][k]['subtype_oh'] = subtype_oh
+#     return dset
 
 def set_trt(ldata): 
 #     a = np.zeros_like(ldata[...,0]) 
@@ -408,7 +408,7 @@ def load_synthetic_data_trt(
     dset = {}
     for fold in fold_span:
         dset[fold] = {}
-        for k in ['train','valid','test']:
+        for k in nsamples.keys():
             b, ys, subtype, subtype_oh, ldata = generate_synthetic(nsamples[k], noisy_ys=True, lrandom=lrandom, add_feats=add_feats, sub=sub, n_time_steps=n_time_steps)
             dset[fold][k]      = {}
             if distractor_dims_b == 0:
