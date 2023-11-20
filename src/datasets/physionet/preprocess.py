@@ -109,15 +109,9 @@ for f in os.listdir(physionet_path + 'set-a/'):
     # Reorder columns
     patient_df = patient_df[['Time'] + general_descriptors + time_series_params]
 
-    # Use forward imputation on the general descriptors.
-    patient_df[general_descriptors] = patient_df[general_descriptors].ffill()
+    # Replace -1 with NaN
+    patient_df = patient_df.replace(-1, np.nan)
 
-    # Add columns for to indicate which values are missing (-1 or NaN)
-    for param in general_descriptors:
-        patient_df[param + '_missing'] = patient_df[param].isna() | (patient_df[param] == -1)
-    for param in time_series_params:
-        patient_df[param + '_missing'] = patient_df[param].isna() | (patient_df[param] == -1)
-    
     # Add the patient data frame to the list of patient dataframes.
     patient_df = patient_df.astype(float)
     patient_dfs.append(patient_df)
