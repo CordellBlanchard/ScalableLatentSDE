@@ -7,8 +7,7 @@ class AutoRegressionIntegrated:
   AutoRegressive Integrated (ARI) model for one dimensional data.
 
   Parameters:
-  - diff_order (np.array): array containing the diff order of each variable from training data
-  - coef (float): coefficient found from fitting model to training data
+  - lag (int): specifices how far back to look when predicting
 
   Methods:
   - predict_future(test_data, steps): Makes predictions using the fitted VAR model.
@@ -32,7 +31,7 @@ class AutoRegressionIntegrated:
       Parameters:
       - predictions (pd.DataFrame): The predicted values.
       - history (pd.Dataframe): the data that predictions were predicting before differencing
-      - diff_order (np.array): numpy array containing the diff order of each variable from training data
+      - diff_order (np.array): numpy array containing the diff order of each dimension from training data
 
 
       Returns:
@@ -58,7 +57,7 @@ class AutoRegressionIntegrated:
     Parameters:
     - test_data (pd.DataFrame): The test data used for making predictions (needs to have same indices as training data).
     - steps (int): The number of steps to forecast.
-    - diff_order (np.array): numpy array containing the diff order of each variable from training data
+    - diff_order (np.array): numpy array containing the diff order of each dimension from training data
     - coef (float): coefficient found from fitting model to training data
 
 

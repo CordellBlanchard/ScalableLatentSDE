@@ -16,8 +16,6 @@ loss_params: {}
 
 trainer_name: "AutoRegressionIntegratedTrainer"
 trainer_params:
-  max_diff: 5 
-  significance_level: 0.05 
   lag: 2
   diff_order: [1]
   eval_window_shifts: [1,2,3,4,5]
