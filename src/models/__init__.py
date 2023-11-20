@@ -7,3 +7,5 @@ from .dmm import (
     DMMBinary,
 )
 from .sde import SDEContinuousFixedTheta
+
+from .ARI import AutoRegressionIntegrated

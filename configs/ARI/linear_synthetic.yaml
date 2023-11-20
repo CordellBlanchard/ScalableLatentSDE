@@ -1,0 +1,30 @@
+dataset_name: "linear_gssm"
+dataset_params:
+  n_time_steps: 25
+  n_train_samples: 5000
+  n_val_samples: 512
+  n_test_samples: 512
+  batch_size: 512
+  return_times: True
+
+model_name: "AutoRegressionIntegrated"
+model_params:
+  lag: 2
+
+loss_name: "AutoRegressionIntegreatedRMSE"
+loss_params: {}
+
+trainer_name: "AutoRegressionIntegratedTrainer"
+trainer_params:
+  max_diff: 5 
+  significance_level: 0.05 
+  lag: 2
+  diff_order: [1]
+  eval_window_shifts: [1,2,3,4,5]
+  n_eval_windows: 5 # How many times to shift the window (starting from the end) for evaluation
+  save_path: "models/ARI/linear_synthetic.npy"
+
+  
+logger_name: "WandbLogger"
+logger_params: {}
+
