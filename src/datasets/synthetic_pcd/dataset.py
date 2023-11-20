@@ -37,9 +37,9 @@ def get_linear_synthetic_pcd(
     # Using the raw data (the output of the black box above), convert into datasets
     # consisting of pairs of observations and hidden states over time.
     dataset = []
-    for x, x_orig, a in zip(raw_data["x"], raw_data["x_orig"], raw_data["a"]):
+    for x, a in zip(raw_data["x"], raw_data["a"]):
         observation = x
-        hidden = np.concatenate([x_orig, a], axis = -1)
+        hidden = a
 
         sample = [observation, hidden]
         if return_times:
