@@ -7,9 +7,6 @@ class AutoRegressionIntegreatedRMSE:
     """
     RMSE for AutoRegressive Integrated (ARI) model.
 
-    Parameters:
-    - model (AutoRegressiveIntegrated): The trained ARI model
-
     Methods:
     - calculate_rmse(true_values, predicted_values): Calculates the Root Mean Squared Error (RMSE) for the predicted values.
     - rolling_window_rmse(eval_window_shifts, n_eval_windows): Rolling window evaluation of RMSE.
@@ -19,9 +16,6 @@ class AutoRegressionIntegreatedRMSE:
     def __init__(self):
         """
         Initialize the AutoRegressionIntegrated object.
-
-        Parameters:
-        - model (AutoRegressiveIntegrated): The trained ARI model
         """
         pass
     

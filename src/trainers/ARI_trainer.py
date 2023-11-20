@@ -1,7 +1,6 @@
 import pandas as pd
 import numpy as np
 from tqdm import tqdm
-from statsmodels.tsa.stattools import adfuller
 
 class AutoRegressionIntegratedTrainer:
   """
@@ -20,7 +19,7 @@ class AutoRegressionIntegratedTrainer:
       Used to log metrics during training
   trainer_params: Dict[str, Any]
       Dictionary of parameters for the trainer
-      Should contain max_diff, significance_level, lag, eval_window_shift, n_eval_windows, diff_order
+      Should contain lag, eval_window_shift, n_eval_windows, diff_order, save_path
   """
 
   def __init__(self, model, dataloaders, loss, logger, trainer_params):
@@ -28,17 +27,27 @@ class AutoRegressionIntegratedTrainer:
     Initialize the AutoRegressionIntegrated object.
 
     Parameters:
-    - data (pd.DataFrame): The time series data with columns representing different variables.
-    - max_diff (int): The maximum number of differences to attempt to make the data stationary.
-    - significance_level (float): The significance level for the Augmented Dickey-Fuller test.
-    - lag (int): The lag order to use. Default is 2.
+      Parameters
+    ----------
+    model: nn.Module
+        Model to train
+    dataloaders: Dict[str, DataLoader]
+        Dictionary of dataloaders for train, val, and test sets
+    loss: nn.Module
+        Loss function to use
+        forward should take as input: model output, data, and epoch
+    logger: Logger
+        Used to log metrics during training
+    trainer_params: Dict[str, Any]
+        Dictionary of parameters for the trainer
+        Should contain lag, eval_window_shift, n_eval_windows, diff_order, save_path
     """
 
     self.model = model # ARI model
     self.dataloaders = dataloaders # data
     self.loss = loss # rmse loss
     self.logger = logger # wandb logger
-    self.params = trainer_params # contains max_diff, siginicane level, lag, etc.
+    self.params = trainer_params # contains lag, etc.
 
     self.coef = None
     self._useVAR = False # if data is more than 1 dimensional use data. (have not added feature that yet)
@@ -62,11 +71,7 @@ class AutoRegressionIntegratedTrainer:
 
   def run(self):
     """
-    Fits the VAR or AR model with the selected lag order.
-
-    Returns:
-    - diff_order (pd.Series): array containing the diff order of each variable from training data
-    - coef (float): coefficient found from fitting model to training data
+    Fits the VAR or AR model with the selected lag order, and saves the trained coefficient for predicting
     """
     all_data = [] # shape is (n_samples, n_time_steps, number_of_dimensions)
     for data in self.dataloaders['train']:
