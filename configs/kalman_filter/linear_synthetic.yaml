@@ -1,0 +1,7 @@
+dataset_name: "linear_gssm"
+dataset_params:
+  n_time_steps: 25
+  n_train_samples: 5000
+  n_val_samples: 512
+  n_test_samples: 512
+  batch_size: 512
