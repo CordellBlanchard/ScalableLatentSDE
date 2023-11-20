@@ -1,2 +1,3 @@
-from .dmm_elbo import DMMContinuousELBO
+from .dmm_elbo import DMMContinuousELBO, DMMBinaryELBO
 from .sde_elbo import SDEContinuousELBO
+from .ARI_rmse import AutoRegressionIntegreatedRMSE

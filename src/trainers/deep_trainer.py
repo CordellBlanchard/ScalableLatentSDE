@@ -67,8 +67,7 @@ class DeepTrainer:
                 else:
                     data = data.to(device)
 
-                model_output = self.model(data)
-                loss, to_log = self.loss(*model_output, data, epoch)
+                loss, to_log = self.loss(self.model, data, epoch)
 
                 loss.backward()
                 optimizer.step()
@@ -113,8 +112,7 @@ class DeepTrainer:
                 else:
                     data = data.to(device)
 
-                model_output = self.model(data)
-                _, to_log = self.loss(*model_output, data, epoch)
+                _, to_log = self.loss(self.model, data, epoch)
                 for key, value in to_log.items():
                     if key not in eval_metrics:
                         eval_metrics[key] = []

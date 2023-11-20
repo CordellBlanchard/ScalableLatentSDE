@@ -17,12 +17,18 @@ class LinearGSSM(GSSM):
         Number of samples to generate
     n_time_steps: int
         Number of time steps to generate
+    return_latents: bool
+        Whether to return the latents
     return_times: bool
         Whether to return the time steps
     """
 
     def __init__(
-        self, n_samples: int = 5000, n_time_steps: int = 25, return_times: bool = False
+        self,
+        n_samples: int = 5000,
+        n_time_steps: int = 25,
+        return_latents: bool = False,
+        return_times: bool = False,
     ):
         std_z = np.sqrt(10)
         std_x = np.sqrt(20)
@@ -42,6 +48,7 @@ class LinearGSSM(GSSM):
             gen_initial_latent,
             n_samples,
             n_time_steps,
+            return_latents,
             return_times,
         )
 
@@ -61,17 +68,20 @@ class NonLinearGSSM(GSSM):
         Number of samples to generate
     n_time_steps: int
         Number of time steps to generate
+    return_latents: bool
+        Whether to return the latents
     return_times: bool
         Whether to return the time steps
     """
 
     def __init__(
         self,
-        alpha: float = 0.5,
-        beta: float = -0.1,
         n_samples: int = 5000,
         n_time_steps: int = 25,
+        return_latents: bool = False,
         return_times: bool = False,
+        alpha: float = 0.5,
+        beta: float = -0.1,
     ):
         def transition_func(prev_latent: np.array, t: int) -> np.array:
             z0 = prev_latent[:, 0]
@@ -82,7 +92,7 @@ class NonLinearGSSM(GSSM):
             return np.random.normal(0, 1, size=next_z_mean.shape) + next_z_mean
 
         def emission_func(latent: np.array, t: int) -> np.array:
-            return np.random.normal(0, 0.1, size=latent.shape) + (latent * 0.5)
+            return np.random.normal(0, np.sqrt(0.1), size=latent.shape) + (latent * 0.5)
 
         def gen_initial_latent(n_samples: int) -> np.array:
             return np.random.normal(0, 1, size=(n_samples, 2))
@@ -93,5 +103,6 @@ class NonLinearGSSM(GSSM):
             gen_initial_latent,
             n_samples,
             n_time_steps,
+            return_latents,
             return_times,
         )

@@ -4,7 +4,7 @@ from .emission_models import (
     EmissionNetworkNormal,
     EmissionNetworkBinary,
 )
-from .inference_networks import StructuredInferenceLR
+from .inference_networks import StructuredInferenceLR, TransformerSTLR
 from .transition_models import (
     DeterministicTransitionFunction,
     GatedTransitionFunction,

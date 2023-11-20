@@ -28,6 +28,8 @@ class GSSM(Dataset):
         Number of samples to generate
     n_time_steps: int
         Number of time steps to generate
+    return_latents: bool
+        Whether to return the latents
     return_times: bool
         Whether to return the time steps
 
@@ -46,6 +48,7 @@ class GSSM(Dataset):
         gen_initial_latent: Callable[[int], np.array],
         n_samples: int = 5000,
         n_time_steps: int = 25,
+        return_latents: bool = False,
         return_times: bool = False,
     ):
         self.transition_func = transition_func
@@ -53,6 +56,7 @@ class GSSM(Dataset):
         self.generate_initial_latent = gen_initial_latent
         self.n_samples = n_samples
         self.n_time_steps = n_time_steps
+        self.return_latents = return_latents
         self.return_times = return_times
 
         # Generate data using the given functions
@@ -128,6 +132,10 @@ class GSSM(Dataset):
         return self.n_samples
 
     def __getitem__(self, idx):
+        obs = [self.observations[idx]]
+        if self.return_latents:
+            obs.append(self.latent_variables[idx])
+
         if self.return_times:
-            return self.observations[idx], self.times
-        return self.observations[idx]
+            obs.append(self.times)
+        return obs

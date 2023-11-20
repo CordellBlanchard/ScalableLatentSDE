@@ -19,7 +19,7 @@ class DeterministicTransitionFunction(nn.Module):
     transition_mean : Callable[[torch.Tensor], torch.Tensor]
         Function that takes in the latent variables at time step t-1 and returns
         the mean of the distribution for latent variables at time step t
-    transition_sigma : Callable[[torch.Tensor], torch.Tensor]
+    transition_log_var : Callable[[torch.Tensor], torch.Tensor]
         Function that takes in the latent variables at time step t-1 and returns
         the standard deviation of the distribution for latent variables at time step t
     """
@@ -27,11 +27,11 @@ class DeterministicTransitionFunction(nn.Module):
     def __init__(
         self,
         transition_mean: Callable[[torch.Tensor], torch.Tensor],
-        transition_sigma: Callable[[torch.Tensor], torch.Tensor],
+        transition_log_var: Callable[[torch.Tensor], torch.Tensor],
     ):
         super().__init__()
         self.transition_mean = transition_mean
-        self.transition_sigma = transition_sigma
+        self.transition_log_var = transition_log_var
 
     def forward(self, prev_latents: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """
@@ -46,11 +46,11 @@ class DeterministicTransitionFunction(nn.Module):
         -------
         transition_mean: torch.Tensor
             Mean of the distribution for latent variables at time step t, shape = (*, latent_dim)
-        transition_sigma: torch.Tensor
-            Standard deviation of the distribution for latent variables at time step t,
+        transition_log_var: torch.Tensor
+            Log variance of the distribution for latent variables at time step t,
             shape = (*, latent_dim)
         """
-        return self.transition_mean(prev_latents), self.transition_sigma(prev_latents)
+        return self.transition_mean(prev_latents), self.transition_log_var(prev_latents)
 
     def sample(
         self, transition_distribution: Tuple[torch.Tensor, torch.Tensor]
@@ -69,9 +69,10 @@ class DeterministicTransitionFunction(nn.Module):
         torch.Tensor
             Sampled latent variables, shape = (*, latent_dim)
         """
-        return transition_distribution[0] + transition_distribution[
-            1
-        ] * torch.randn_like(transition_distribution[1])
+        standard_deviation = torch.exp(0.5 * transition_distribution[1])
+        return transition_distribution[0] + standard_deviation * torch.randn_like(
+            transition_distribution[1]
+        )
 
 
 class GatedTransitionFunction(nn.Module):
@@ -102,7 +103,6 @@ class GatedTransitionFunction(nn.Module):
         self.W_mp = nn.Linear(latent_dim, latent_dim)
         self.W_sp = nn.Linear(latent_dim, latent_dim)
 
-        self.softplus = nn.Softplus()
         self.init_w_mp()
 
     def forward(self, prev_latents: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -119,12 +119,12 @@ class GatedTransitionFunction(nn.Module):
         m_t: torch.Tensor
             Mean of the distribution for z_t, shape = (*, latent_dim)
         s_t: torch.Tensor
-            Standard deviation of the distribution for z_t, shape = (*, latent_dim)
+           Log variance of the distribution for z_t, shape = (*, latent_dim)
         """
         g_t = F.sigmoid(self.W_2g(F.relu(self.W_1g(prev_latents))))
         h_t = self.W_2h(F.relu(self.W_1h(prev_latents)))
         m_t = (1 - g_t) * (self.W_mp(prev_latents)) + g_t * h_t
-        s_t = self.softplus(self.W_sp(F.relu(h_t)))
+        s_t = self.W_sp(F.relu(h_t))
 
         return m_t, s_t
 
@@ -145,7 +145,7 @@ class GatedTransitionFunction(nn.Module):
         Parameters
         ----------
         transition_distribution : Tuple[torch.Tensor, torch.Tensor]
-            Tuple containing the mean and standard deviation of the
+            Tuple containing the mean and log variance of the
             distribution of the latent variables
 
         Returns
@@ -153,6 +153,7 @@ class GatedTransitionFunction(nn.Module):
         torch.Tensor
             Sampled latent variables, shape = (*, latent_dim)
         """
-        return transition_distribution[0] + transition_distribution[
-            1
-        ] * torch.randn_like(transition_distribution[1])
+        standard_deviation = torch.exp(0.5 * transition_distribution[1])
+        return transition_distribution[0] + standard_deviation * torch.randn_like(
+            transition_distribution[1]
+        )

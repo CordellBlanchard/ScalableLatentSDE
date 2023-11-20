@@ -16,18 +16,18 @@ class EmissionNormalBase(nn.Module):
     ----------
     emission_mean_func : Callable[[torch.Tensor], torch.Tensor]
         Function that maps latents to emission means
-    emission_sigma_func : Callable[[torch.Tensor], torch.Tensor]
-        Function that maps latents to emission standard deviations
+    emission_log_var_func : Callable[[torch.Tensor], torch.Tensor]
+        Function that maps latents to emission log variances
     """
 
     def __init__(
         self,
         emission_mean_func: Callable[[torch.Tensor], torch.Tensor],
-        emission_sigma_func: Callable[[torch.Tensor], torch.Tensor],
+        emission_log_var_func: Callable[[torch.Tensor], torch.Tensor],
     ):
         super().__init__()
         self.emission_mean_func = emission_mean_func
-        self.emission_sigma_func = emission_sigma_func
+        self.emission_log_var_func = emission_log_var_func
 
     def forward(self, latents: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """
@@ -45,7 +45,7 @@ class EmissionNormalBase(nn.Module):
         obs_sigma: torch.Tensor
             Standard deviation of the distribution for observations, shape = (*, obs_dim)
         """
-        return self.emission_mean_func(latents), self.emission_sigma_func(latents)
+        return self.emission_mean_func(latents), self.emission_log_var_func(latents)
 
     def sample(
         self, emission_distribution: Tuple[torch.Tensor, torch.Tensor]
@@ -56,16 +56,16 @@ class EmissionNormalBase(nn.Module):
         Parameters
         ----------
         emission_distribution : Tuple[torch.Tensor, torch.Tensor]
-            Tuple of emission mean and standard deviation
+            Tuple of emission mean and log variance
 
         Returns
         -------
         torch.Tensor
             Sample from the emission distribution, same shape as each of the inputs
         """
-        return emission_distribution[0] + emission_distribution[1] * torch.randn_like(
-            emission_distribution[1]
-        )
+        return emission_distribution[0] + torch.exp(
+            0.5 * emission_distribution[1]
+        ) * torch.randn_like(emission_distribution[1])
 
 
 class EmissionBinaryBase(nn.Module):
@@ -139,16 +139,15 @@ class EmissionNetworkNormal(EmissionNormalBase):
             nn.ReLU(),
             nn.Linear(hidden_size, self.obs_dim),
         )
-        sigma_net = nn.Sequential(
+        log_var_net = nn.Sequential(
             nn.Linear(self.latent_dim, hidden_size),
             nn.ReLU(),
             nn.Linear(hidden_size, hidden_size),
             nn.ReLU(),
             nn.Linear(hidden_size, self.obs_dim),
-            nn.Softplus(),
         )
 
-        super().__init__(mu_net, sigma_net)
+        super().__init__(mu_net, log_var_net)
 
 
 class EmissionNetworkBinary(EmissionBinaryBase):
@@ -176,6 +175,10 @@ class EmissionNetworkBinary(EmissionBinaryBase):
 
         bin_net = nn.Sequential(
             nn.Linear(self.latent_dim, hidden_size),
+            nn.ReLU(),
+            nn.Linear(hidden_size, hidden_size),
+            nn.ReLU(),
+            nn.Linear(hidden_size, hidden_size),
             nn.ReLU(),
             nn.Linear(hidden_size, hidden_size),
             nn.ReLU(),
