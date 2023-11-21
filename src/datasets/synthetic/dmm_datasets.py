@@ -106,3 +106,49 @@ class NonLinearGSSM(GSSM):
             return_latents,
             return_times,
         )
+
+
+class NonLinearGSSM2(GSSM):
+    """
+    Another NonLinear Generative State Space Model Dataset
+
+    Parameters
+    ----------
+    n_samples: int
+        Number of samples to generate
+    n_time_steps: int
+        Number of time steps to generate
+    return_latents: bool
+        Whether to return the latents
+    return_times: bool
+        Whether to return the time steps
+    """
+
+    def __init__(
+        self,
+        n_samples: int = 5000,
+        n_time_steps: int = 25,
+        return_latents: bool = False,
+        return_times: bool = False,
+    ):
+        std_z = np.sqrt(0.1)
+        std_x = np.sqrt(0.1)
+
+        def transition_func(prev_latent: np.array, t: int) -> np.array:
+            return np.random.normal(0, std_z, size=prev_latent.shape) + np.sin(t)
+
+        def emission_func(latent: np.array, t: int) -> np.array:
+            return np.random.normal(0, std_x, size=latent.shape) + (latent * 0.5)
+
+        def gen_initial_latent(n_samples: int) -> np.array:
+            return np.random.normal(0, std_z, size=(n_samples, 1))
+
+        super().__init__(
+            transition_func,
+            emission_func,
+            gen_initial_latent,
+            n_samples,
+            n_time_steps,
+            return_latents,
+            return_times,
+        )

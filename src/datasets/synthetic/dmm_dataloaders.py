@@ -3,7 +3,7 @@ Dataloader for the synthetic datasets in dmm_datasets.py
 """
 from typing import Dict
 from torch.utils.data import Dataset, DataLoader
-from .dmm_datasets import LinearGSSM, NonLinearGSSM
+from .dmm_datasets import LinearGSSM, NonLinearGSSM, NonLinearGSSM2
 
 
 def linear_gssm(**kwargs) -> Dict[str, DataLoader]:
@@ -40,6 +40,24 @@ def nonlinear_gssm(**kwargs) -> Dict[str, DataLoader]:
         Dictionary of dataloaders for train, val, and test sets
     """
     return get_gssm_dataloaders(NonLinearGSSM, **kwargs)
+
+
+def nonlinear_gssm2(**kwargs) -> Dict[str, DataLoader]:
+    """
+    Get NonLinearGSSM2 dataloaders for train, val, and test sets
+
+    Parameters
+    ----------
+    **kwargs:
+        Parameters for the dataset
+        Should contain n_train_samples, n_val_samples, n_test_samples, n_time_steps, batch_size
+
+    Returns
+    -------
+    Dict[str, DataLoader]
+        Dictionary of dataloaders for train, val, and test sets
+    """
+    return get_gssm_dataloaders(NonLinearGSSM2, **kwargs)
 
 
 def get_gssm_dataloaders(
