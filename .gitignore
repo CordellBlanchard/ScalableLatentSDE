@@ -1,7 +1,10 @@
 wandb
 
 # saved models
-./models
+./models/*
+*.pth
+*.npy
+*.mid
 
 # vscode settings
 .vscode

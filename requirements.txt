@@ -4,3 +4,6 @@ matplotlib
 wandb
 requests
 tqdm
+scikit-learn
+mido
+pandas
