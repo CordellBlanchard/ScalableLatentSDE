@@ -28,11 +28,24 @@ def collate_fn(
     """
     if isinstance(batch[0], tuple):
         data, times = zip(*batch)
-        data = pad_sequence(data, batch_first=True)
-        times = pad_sequence(times, batch_first=True)
-        return data, times
+        padded_data = pad_sequence(data, batch_first=True)
+        padded_times = pad_sequence(times, batch_first=True)
+
+        # Creating a mask
+        mask = torch.zeros_like(padded_data, dtype=torch.bool)
+        for i, seq in enumerate(data):
+            seq_length = len(seq)
+            mask[i, :seq_length] = 1
+
+        return [padded_data, mask, padded_times]
     else:
-        return pad_sequence(batch, batch_first=True)
+        # Creating a mask
+        padded_data = pad_sequence(batch, batch_first=True)
+        mask = torch.zeros_like(padded_data, dtype=torch.bool)
+        for i, seq in enumerate(batch):
+            seq_length = len(seq)
+            mask[i, :seq_length] = 1
+        return [padded_data, mask]
 
 
 def jsb_piano(

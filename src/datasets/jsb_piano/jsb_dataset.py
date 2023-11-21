@@ -178,4 +178,4 @@ class JSBPiano(Dataset):
             times_subseq = self.times[seq_idx][start:end]
             return subseq, times_subseq
 
-        return [subseq]
+        return subseq
