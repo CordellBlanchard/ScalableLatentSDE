@@ -33,13 +33,21 @@ class StructuredInferenceLR(nn.Module):
         self.obs_dim = obs_dim
         self.linear_embedding = nn.Linear(obs_dim, hidden_dim)
 
-        self.lstm = nn.LSTM(
+        self.lstm_forward = nn.LSTM(
             input_size=hidden_dim,
             hidden_size=hidden_dim,
             proj_size=latent_dim,
             num_layers=n_layers,
             batch_first=True,
-            bidirectional=True,
+            bidirectional=False,
+        )
+        self.lstm_backward = nn.LSTM(
+            input_size=hidden_dim,
+            hidden_size=hidden_dim,
+            proj_size=latent_dim,
+            num_layers=n_layers,
+            batch_first=True,
+            bidirectional=False,
         )
         self.combine_layer = nn.Sequential(nn.Linear(latent_dim, latent_dim), nn.Tanh())
         self.mu_layer = nn.Linear(latent_dim, latent_dim)
@@ -81,22 +89,23 @@ class StructuredInferenceLR(nn.Module):
         if obs_dim != self.obs_dim:
             raise ValueError(f"Expected obs_dim to be {self.obs_dim}, got {obs_dim}")
 
-        lstm_out, _ = self.lstm(self.linear_embedding(observations))
-        lstm_out = lstm_out.reshape(batch_size, n_time_steps, 2, self.latent_dim)
-
-        # split h into lstm_out_left and lstm_out_right for the bidiretional parts
-        lstm_out_left = lstm_out[:, :, 0, :]
-        lstm_out_right = lstm_out[:, :, 1, :]
+        lstm_out_left, _ = self.lstm_forward(self.linear_embedding(observations))
+        lstm_out_right, _ = self.lstm_backward(
+            self.linear_embedding(torch.flip(observations, [1]))
+        )
+        lstm_out_right = torch.flip(lstm_out_right, [1])
 
         # Predicting distributions for z and sampling z from these distributions
         z_mus = []
         z_log_vars = []
-        curr_z = torch.zeros(batch_size, self.latent_dim).to(observations.device)
+        z_samples = [
+            torch.zeros(batch_size, 1, self.latent_dim).to(observations.device)
+        ]
 
         for t in range(n_time_steps):
             # Combiner layer
             h_combined = (
-                self.combine_layer(curr_z.reshape(batch_size, self.latent_dim))
+                self.combine_layer(z_samples[-1].reshape(batch_size, self.latent_dim))
                 + lstm_out_left[:, t, :]
                 + lstm_out_right[:, t, :]
             ) / 3
@@ -105,6 +114,7 @@ class StructuredInferenceLR(nn.Module):
 
             # Sample z in a gradient friendly way (reparametrization trick)
             curr_z = z_u + torch.randn_like(z_log_var) * torch.exp(0.5 * z_log_var)
+            z_samples.append(curr_z.reshape(batch_size, 1, self.latent_dim))
 
             # Save mu, sigma, sample
             z_mus.append(z_u.reshape(batch_size, 1, self.latent_dim))
@@ -112,7 +122,7 @@ class StructuredInferenceLR(nn.Module):
 
         z_mus = torch.cat(z_mus, dim=1)
         z_log_vars = torch.cat(z_log_vars, dim=1)
-        z_samples = z_mus + torch.randn_like(z_log_vars) * torch.exp(0.5 * z_log_vars)
+        z_samples = torch.cat(z_samples[1:], dim=1)
 
         return (z_mus, z_log_vars), z_samples
 
