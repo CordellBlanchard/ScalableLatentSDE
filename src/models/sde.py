@@ -28,41 +28,6 @@ class SDEBase(StateSpaceModel):
         the transition distribution (or samples from it)
     """
 
-    def forward(self, inputs: Tuple[Any, torch.Tensor]):
-        """
-        Forward pass through the model, mostly used for training
-
-        Parameters
-        ----------
-        inputs : Tuple[Any, torch.Tensor]
-            inputs[0] is observations, inputs[1] is time_steps
-            Observations shape = (batch_size, n_time_steps, obs_dim)
-
-        Returns
-        -------
-        latent_distribution: torch.Tensor or Tuple[torch.Tensor, torch.Tensor]
-            Output from the inference model, output shape depends on the model
-        emission_distribution: torch.Tensor or Tuple[torch.Tensor, torch.Tensor]
-            Output from the emission model, output shape depends on the model
-        transition_distribution: torch.Tensor or Tuple[torch.Tensor, torch.Tensor]
-            Output from the transition model, output shape depends on the model
-        """
-        assert len(inputs) == 2
-        observations, time_steps = inputs
-
-        latent_distribution, latent_samples = self.inference_model(observations)
-        emission_distribution = self.emission_model(latent_samples)
-
-        # Transition model forward pass
-        batch_size, n_time_steps, latent_dim = latent_samples.shape
-        latent_samples = latent_samples[:, :-1].reshape(-1, latent_dim)
-        start_times = time_steps[:, :-1].reshape(-1, 1)
-        end_times = time_steps[:, 1:].reshape(-1, 1)
-        dt = (end_times - start_times) / self.transition_model.n_euler_steps
-        transition_distribution = self.transition_model(latent_samples, start_times, dt)
-
-        return latent_distribution, emission_distribution, transition_distribution
-
     def predict_future(
         self, inputs: Tuple[Any, torch.Tensor], time_steps: torch.Tensor = None
     ) -> Tuple[torch.Tensor, torch.Tensor]:
@@ -122,7 +87,7 @@ class SDEBase(StateSpaceModel):
         return predictions, all_latent_samples
 
 
-class SDEContinuousFixedTheta(SDEBase):
+class SDEContinuousFixedEmission(SDEBase):
     """
     DMM used for the synthetic data experiment in the paper:
     Structured Inference Networks for Nonlinear State Space Models, Krishnan et al. (2016)
@@ -135,11 +100,38 @@ class SDEContinuousFixedTheta(SDEBase):
         latent_dim = 1
         obs_dim = 1
         emission_mean = lambda latent: 0.5 * latent
-        emission_sigma = lambda latent: torch.ones_like(latent).to(latent.device)
+        emission_sigma = lambda latent: torch.log(torch.ones_like(latent) * 20)
         emission_model = EmissionNormalBase(emission_mean, emission_sigma)
 
         inference_model = StructuredInferenceLR(
-            latent_dim, obs_dim, hidden_dim=256, n_layers=8
+            latent_dim, obs_dim, hidden_dim=256, n_layers=2
+        )
+
+        transition_model = SDETransitionTimeIndep(
+            latent_dim, hidden_size=transition_hidden_size, n_euler_steps=n_euler_steps
+        )
+        super().__init__(inference_model, emission_model, transition_model)
+
+
+class SDEContinuous(SDEBase):
+    """
+    DMM used for the synthetic data experiment in the paper:
+    Structured Inference Networks for Nonlinear State Space Models, Krishnan et al. (2016)
+    Specifically the linear synthetic dataset
+    Both emission and transition models are fixed to the ground truth distributions
+    Note: emission sigma is set to 1 instead of 20 as in the paper, found this to work better
+    """
+
+    def __init__(
+        self,
+        n_euler_steps: int,
+        transition_hidden_size: int,
+        latent_dim: int = 1,
+        obs_dim: int = 1,
+    ):
+        emission_model = EmissionNetworkNormal(latent_dim, obs_dim, hidden_size=10)
+        inference_model = StructuredInferenceLR(
+            latent_dim, obs_dim, hidden_dim=256, n_layers=2
         )
 
         transition_model = SDETransitionTimeIndep(
