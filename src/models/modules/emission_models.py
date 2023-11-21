@@ -178,11 +178,27 @@ class EmissionNetworkBinary(EmissionBinaryBase):
             nn.ReLU(),
             nn.Linear(hidden_size, hidden_size),
             nn.ReLU(),
-            nn.Linear(hidden_size, hidden_size),
-            nn.ReLU(),
-            nn.Linear(hidden_size, hidden_size),
-            nn.ReLU(),
             nn.Linear(hidden_size, self.obs_dim),
-            nn.Sigmoid(),
-        )
+        )  # logits output
         super().__init__(bin_net)
+
+    def sample(self, emission_distribution: torch.Tensor) -> torch.Tensor:
+        """
+        Sample from the emission distribution
+        Note: these samples don't support gradients
+
+        Parameters
+        ----------
+        emission_distribution : torch.Tensor
+            Probability of observations being =1, shape = (*, obs_dim)
+
+        Returns
+        -------
+        torch.Tensor
+            Sample from the emission distribution, same shape as each of the inputs
+        """
+        emission_distribution = torch.sigmoid(emission_distribution)
+        return (
+            torch.rand(emission_distribution.shape).to(emission_distribution.device)
+            < emission_distribution
+        )
