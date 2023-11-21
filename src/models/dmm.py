@@ -140,13 +140,13 @@ class DMMContinuous(StateSpaceModel):
         latent_dim: int,
         obs_dim: int,
     ):
-        emission_model = EmissionNetworkNormal(latent_dim, obs_dim, hidden_size=10)
+        emission_model = EmissionNetworkNormal(latent_dim, obs_dim, hidden_size=256)
 
         inference_model = StructuredInferenceLR(
             latent_dim, obs_dim, st_net_hidden_dim, st_net_n_layers
         )
 
-        transition_model = GatedTransitionFunction(latent_dim, hidden_size=10)
+        transition_model = GatedTransitionFunction(latent_dim, hidden_size=256)
         super().__init__(inference_model, emission_model, transition_model)
 
 

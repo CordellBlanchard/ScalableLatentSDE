@@ -7,7 +7,7 @@ from tqdm import tqdm
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
-
+import numpy as np
 
 class DeepTrainer:
     """
@@ -62,10 +62,10 @@ class DeepTrainer:
             for data in self.dataloaders["train"]:
                 optimizer.zero_grad()
 
-                if isinstance(data, list):
+                if isinstance(data, list) or isinstance(data, tuple):
                     data = [d.to(device) for d in data]
                 else:
-                    data = data.to(device)
+                    data = [data.to(device)]
 
                 loss, to_log = self.loss(self.model, data, epoch)
 
@@ -107,10 +107,10 @@ class DeepTrainer:
             eval_metrics = {}
             rolling_window_rmse = {i: [] for i in self.params["eval_window_shifts"]}
             for data in dataloader:
-                if isinstance(data, list):
+                if isinstance(data, list) or isinstance(data, tuple):
                     data = [d.to(device) for d in data]
                 else:
-                    data = data.to(device)
+                    data = [data.to(device)]
 
                 _, to_log = self.loss(self.model, data, epoch)
                 for key, value in to_log.items():
@@ -134,6 +134,7 @@ class DeepTrainer:
                 rolling_window_rmse[key] = sum(rolling_window_rmse[key]) / len(
                     rolling_window_rmse[key]
                 )
+
             for key in eval_metrics:
                 eval_metrics[key] = sum(eval_metrics[key]) / len(eval_metrics[key])
             eval_metrics["rolling_window"] = rolling_window_rmse

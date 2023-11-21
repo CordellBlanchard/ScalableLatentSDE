@@ -8,7 +8,7 @@ from torch import nn
 import torch.nn.functional as F
 
 from .utils import gaussian_kl, gaussian_nll, impute_transition_distribution
-
+import numpy as np
 
 class DMMContinuousELBO(nn.Module):
     """
@@ -69,6 +69,7 @@ class DMMContinuousELBO(nn.Module):
             Used for logging
         """
         observation_gt = data[0]
+        mask = data[1]
 
         # model forward function
         latent_distribution, latent_samples = model.inference_model(observation_gt)
@@ -88,14 +89,18 @@ class DMMContinuousELBO(nn.Module):
                 emission_distribution[0],
                 emission_distribution[1],
                 observation_gt,
-            ).mean()
+            )*mask
             * observation_gt.shape[2]
         )
+        logp_obs_loss = logp_obs_loss.mean()
 
-        kl_loss = (
-            gaussian_kl(*latent_distribution, *transition_distribution).mean()
+        kl_mask = mask.sum(dim=2) > 0
+        kl_mask = kl_mask.float().reshape(-1, mask.shape[1], 1)
+        kl_loss = ( 
+            gaussian_kl(*latent_distribution, *transition_distribution)*kl_mask
             * latent_distribution[0].shape[2]
         )
+        kl_loss = kl_loss.mean()
 
         annealing_factor = 1
         if self.annealing_params["enabled"]:
@@ -152,8 +157,7 @@ class DMMContinuousELBO(nn.Module):
             )
 
         all_obs = data[0]
-        if len(data) > 1:
-            all_latent = data[1]
+        mask = data[1]
 
         for n in range(n_eval_windows):
             n_observations = all_obs.shape[1] - n - max_window_shift
@@ -167,16 +171,19 @@ class DMMContinuousELBO(nn.Module):
                 inf_out, _ = model.inference_model(all_obs)
                 latents = inf_out[0]
                 shift_preds = latents
-                shift_gt = all_latent
-                rmse = torch.sqrt(torch.mean((shift_preds - shift_gt) ** 2)).item()
-                rolling_window_rmse[0].append(rmse)
+                # shift_gt = all_latent
+                # rmse = torch.sqrt(torch.mean((shift_preds - shift_gt) ** 2)).item()
+                # rolling_window_rmse[0].append(rmse)
             else:
                 preds, _ = model.predict_future(observations, max_window_shift)
                 for shift in eval_window_shifts:
                     shift_preds = preds[:, n_observations + shift - 1, :]
                     shift_obs = all_obs[:, n_observations + shift - 1, :]
-                    rmse = torch.sqrt(torch.mean((shift_preds - shift_obs) ** 2)).item()
-                    rolling_window_rmse[shift].append(rmse)
+                    diff_sq = (shift_preds - shift_obs) ** 2
+                    diff_sq *= mask[:, n_observations + shift - 1, :].float()
+                    rmse = diff_sq.float().sum()
+                    rmse /= mask[:, n_observations + shift - 1, :].float().sum()
+                    rolling_window_rmse[shift].append(torch.sqrt(rmse).item())
 
         return rolling_window_rmse
 

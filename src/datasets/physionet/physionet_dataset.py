@@ -10,24 +10,28 @@ class PhysionetDataset(Dataset):
     Dataset for Physionet data.
     '''
 
-    def __init__(self, imputation_method: str = "missing", discretization_method : str = "none", time_in_data: bool = False, return_times: bool = False, missing_in_data: bool = False):
+    def __init__(self, imputation_method: str = "missing", discretization_method : str = "none", 
+                 time_in_data: bool = False, return_times: bool = False, missing_in_data: bool = False,
+                 return_missing_mask: bool = False):
 
         self.imputation_method = imputation_method
         self.discretization_method = discretization_method
         self.return_times = return_times
+        self.return_missing_mask = return_missing_mask
 
         data = self.load_data()
         print("Loaded Physionet data")
 
         times = []
         general_descs = []
-        missing_data = []
+        missing_mask = []
         imputed_discretized_data = []
 
         for df in tqdm.tqdm(data):
             # Discritize the data using self.discretization_method.
             discretized = self.discretize(df)
-            general_descriptors = ['RecordID', 'Age', 'Gender', 'Height', 'ICUType', 'Weight']
+            discretized = discretized.drop(columns=['RecordID'])
+            general_descriptors = ['Age', 'Gender', 'Height', 'ICUType', 'Weight']
             # Use forward imputation for the general descriptors.
             discretized[general_descriptors] = discretized[general_descriptors].ffill()
             discretized[general_descriptors] = discretized[general_descriptors].fillna(-1)
@@ -37,16 +41,18 @@ class PhysionetDataset(Dataset):
             general_descs.append(discretized[general_descriptors])
 
             # Indicate which values are missing for the columns that are not general descriptors or Time.
+            # In the missing mask, 0 means missing and 1 means not missing.
             discretized = discretized.drop(columns=general_descriptors + ['Time'])
-            missing_data.append(discretized.isna())
+            missing_mask.append(discretized.notna())
 
             # Normalize the data except for the columns containing general descriptors, missing information and time.
-            means = discretized.mean()
-            stds = discretized.std()
-            normalized_discretized = (discretized-means) / stds
+            # means = discretized.mean()
+            # stds = discretized.std()
+            # normalized_discretized = (discretized-means) / stds
 
             # Impute the missing values using self.imputation_method.
-            imputed_discretized_data.append(self.impute_missing(normalized_discretized))
+            # imputed_discretized_data.append(self.impute_missing(normalized_discretized))
+            imputed_discretized_data.append(self.impute_missing(discretized))
             
         print("Done discretizing and imputing Physionet data")
 
@@ -54,7 +60,7 @@ class PhysionetDataset(Dataset):
         imputed_discretized_data = [pd.concat([general_desc, df], axis=1) for general_desc, df in zip(general_descs, imputed_discretized_data)]
         # Convert to torch tensors.
         self.times = [torch.tensor(time.astype(float).values, dtype=torch.float32) for time in times]
-        missing_data = [torch.tensor(df.astype(float).values, dtype=torch.float32) for df in missing_data]
+        self.missing_mask = [torch.tensor(df.astype(float).values, dtype=torch.float32) for df in missing_mask]
         imputed_discretized_data = [torch.tensor(df.astype(float).values, dtype=torch.float32) for df in imputed_discretized_data]
 
         # Include the time in the data if specified. 
@@ -63,15 +69,22 @@ class PhysionetDataset(Dataset):
 
         # Include the missing information in the data if specified.
         if missing_in_data:
-            imputed_discretized_data = [torch.cat([df, missing_df], dim=1) for df, missing_df in zip(imputed_discretized_data, missing_data)]
-
+            imputed_discretized_data = [torch.cat([df, missing_df], dim=1) for df, missing_df in zip(imputed_discretized_data, self.missing_mask)]
+        
+        # Pad the missing mask with 1s to make it the same size as the data.
+        pad_width = imputed_discretized_data[0].shape[1] - self.missing_mask[0].shape[1]
+        self.missing_mask = [torch.cat([torch.ones(df.shape[0], pad_width), df], dim=1) for df in self.missing_mask]
         self.data = imputed_discretized_data
 
     def __len__(self):
         return len(self.data)
     
     def __getitem__(self, idx):
-        if self.return_times:
+        if self.return_missing_mask and self.return_times:
+            return self.data[idx], self.missing_mask[idx], self.times[idx]
+        elif self.return_missing_mask:
+            return self.data[idx], self.missing_mask[idx]
+        elif self.return_times:
             return self.data[idx], self.times[idx]
         else:
             return self.data[idx]

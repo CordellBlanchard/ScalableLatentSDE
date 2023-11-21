@@ -8,6 +8,7 @@ dataset_params:
   time_in_data: True
   return_times: False
   missing_in_data: False
+  return_missing_mask: True
   batch_size: 128
 
 model_name: "DMMContinuous"
@@ -15,7 +16,7 @@ model_params:
   st_net_hidden_dim: 256
   st_net_n_layers: 2
   latent_dim: 100
-  obs_dim: 43
+  obs_dim: 42
 
 loss_name: "DMMContinuousELBO"
 loss_params:
@@ -23,11 +24,11 @@ loss_params:
   annealing_params:
     enabled: True
     warm_up: 50 # How many epochs before start adding KL term
-    n_epochs_for_full: 30 # How many epochs to reach full KL term (will have weight 1 at this value + warmup)
+    n_epochs_for_full: 50 # How many epochs to reach full KL term (will have weight 1 at this value + warmup)
 
 trainer_name: "DeepTrainer"
 trainer_params:
-  n_epochs: 350
+  n_epochs: 1000
   lr: 0.0005
   val_freq: 10 # Validate every 10 epochs
   save_path: "models/dmm/physionet.pth"
@@ -36,6 +37,6 @@ trainer_params:
   eval_window_shifts: [0, 1, 3, 5]
   n_eval_windows: 5 # How many times to shift the window (starting from the end) for evaluation
   
-logger_name: "PrintLogger"
+logger_name: "WandbLogger"
 logger_params: {}
 
