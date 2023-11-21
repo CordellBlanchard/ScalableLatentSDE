@@ -103,3 +103,24 @@ def impute_transition_distribution(
         ),
     )
     return transition_distribution
+
+
+def entropy_upper_bound(samples: torch.Tensor) -> torch.Tensor:
+    """
+    Compute the entropy upper bound of a set of samples
+
+    Parameters
+    ----------
+    samples : torch.Tensor
+        Samples to compute the entropy upper bound of
+        shape = (n_samples, batch_size, n_time_steps, latent_dim)
+
+    Returns
+    -------
+    torch.Tensor
+        Entropy upper bound of the samples
+    """
+    standard_deviation = torch.std(samples, dim=0)
+    term1 = 0.5 * torch.log(standard_deviation.sum(dim=2))
+    term2 = 0.5 * (1 + np.log(2 * np.pi)) * samples.shape[3]
+    return term1 + term2
