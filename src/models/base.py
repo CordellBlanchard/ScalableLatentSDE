@@ -88,3 +88,15 @@ class StateSpaceModel(nn.Module):
         predictions = self.emission_model.sample(emission_distribution)
 
         return predictions, all_latent_samples
+
+    def generate(self, data, n_steps):
+        for _ in range(n_steps):
+            _, latent_samples = self.inference_model(data)
+
+            transition_distribution = self.transition_model(latent_samples)
+            transition_sample = self.transition_model.sample(transition_distribution)
+            emission_distribution = self.emission_model(transition_sample[:, -1:, :])
+            predictions = self.emission_model.sample(emission_distribution)
+            data = torch.cat([data, predictions], dim=1)
+
+        return data
