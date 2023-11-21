@@ -44,7 +44,7 @@ def get_linear_synthetic_pcd(
         sample = [observation, hidden]
         if return_times:
             sample.append(np.arange(n_time_steps))
-        sample = [torch.from_numpy(x) for x in sample]
+        sample = [torch.from_numpy(x).float() for x in sample]
 
         dataset.append(sample)
 

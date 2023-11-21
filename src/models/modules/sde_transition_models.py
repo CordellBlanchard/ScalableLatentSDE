@@ -8,7 +8,7 @@ from torch import nn
 
 
 def sdeint(
-    model: Callable[Any, Any],
+    model: Callable,
     x0: torch.Tensor,
     ts: Union[torch.Tensor, float],
     dt: Union[torch.Tensor, float],
