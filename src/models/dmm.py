@@ -46,8 +46,8 @@ class DMMContinuousFixedTheta(StateSpaceModel):
         )
 
         transition_mean = lambda latent: latent + 0.05
-        transition_log_var = (
-            lambda latent: torch.log(torch.ones_like(latent)).to(latent.device) * 10
+        transition_log_var = lambda latent: torch.log(
+            torch.ones_like(latent).to(latent.device) * 10
         )
         transition_model = DeterministicTransitionFunction(
             transition_mean, transition_log_var
@@ -69,9 +69,13 @@ class DMMContinuousFixedEmission(StateSpaceModel):
         Dimension of the hidden layers in the structured inference network
     st_net_n_layers : int
         Number of hidden layers in the structured inference network
+    transition_hidden_dim : int
+        Dimension of the hidden layers in the transition networks
     """
 
-    def __init__(self, st_net_hidden_dim: int, st_net_n_layers: int):
+    def __init__(
+        self, st_net_hidden_dim: int, st_net_n_layers: int, transition_hidden_dim: int
+    ):
         latent_dim = 1
         obs_dim = 1
         emission_mean = lambda latent: 0.5 * latent
@@ -84,7 +88,7 @@ class DMMContinuousFixedEmission(StateSpaceModel):
             latent_dim, obs_dim, st_net_hidden_dim, st_net_n_layers
         )
 
-        transition_model = GatedTransitionFunction(latent_dim, hidden_size=10)
+        transition_model = GatedTransitionFunction(latent_dim, transition_hidden_dim)
         super().__init__(inference_model, emission_model, transition_model)
 
 
@@ -100,9 +104,11 @@ class TransformerDMMContinuousFixedEmission(StateSpaceModel):
     ----------
     nhead : int
         Number of heads in the transformer
+    transition_hidden_dim : int
+        Dimension of the hidden layers in the transition networks
     """
 
-    def __init__(self, nhead: int = 1):
+    def __init__(self, nhead: int = 1, transition_hidden_dim: int = 10):
         latent_dim = 1
         obs_dim = 1
         emission_mean = lambda latent: 0.5 * latent
@@ -113,7 +119,7 @@ class TransformerDMMContinuousFixedEmission(StateSpaceModel):
 
         inference_model = TransformerSTLR(latent_dim, obs_dim, nhead)
 
-        transition_model = GatedTransitionFunction(latent_dim, hidden_size=10)
+        transition_model = GatedTransitionFunction(latent_dim, transition_hidden_dim)
         super().__init__(inference_model, emission_model, transition_model)
 
 
@@ -131,6 +137,10 @@ class DMMContinuous(StateSpaceModel):
         Dimension of the latent variables
     obs_dim : int
         Dimension of the observations
+    transition_hidden_dim : int
+        Dimension of the hidden layers in the transition networks
+    emission_hidden_size : int
+        Dimension of the hidden layers in the emission network
     """
 
     def __init__(
@@ -139,14 +149,18 @@ class DMMContinuous(StateSpaceModel):
         st_net_n_layers: int,
         latent_dim: int,
         obs_dim: int,
+        transition_hidden_dim: int,
+        emission_hidden_size: int,
     ):
-        emission_model = EmissionNetworkNormal(latent_dim, obs_dim, hidden_size=10)
+        emission_model = EmissionNetworkNormal(
+            latent_dim, obs_dim, emission_hidden_size
+        )
 
         inference_model = StructuredInferenceLR(
             latent_dim, obs_dim, st_net_hidden_dim, st_net_n_layers
         )
 
-        transition_model = GatedTransitionFunction(latent_dim, hidden_size=10)
+        transition_model = GatedTransitionFunction(latent_dim, transition_hidden_dim)
         super().__init__(inference_model, emission_model, transition_model)
 
 
@@ -212,6 +226,10 @@ class DMMBinary(StateSpaceModel):
         Dimension of the latent variables
     obs_dim : int
         Dimension of the observations
+    emission_hidden_size : int
+        Dimension of the hidden layers in the emission network
+    transition_hidden_size : int
+        Dimension of the hidden layers in the transition networks
     """
 
     def __init__(
@@ -220,12 +238,16 @@ class DMMBinary(StateSpaceModel):
         st_net_n_layers: int,
         latent_dim: int,
         obs_dim: int,
+        emission_hidden_size: int,
+        transition_hidden_size: int,
     ):
-        emission_model = EmissionNetworkBinary(latent_dim, obs_dim, hidden_size=512)
+        emission_model = EmissionNetworkBinary(
+            latent_dim, obs_dim, emission_hidden_size
+        )
 
         inference_model = StructuredInferenceLR(
             latent_dim, obs_dim, st_net_hidden_dim, st_net_n_layers
         )
 
-        transition_model = GatedTransitionFunction(latent_dim, hidden_size=512)
+        transition_model = GatedTransitionFunction(latent_dim, transition_hidden_size)
         super().__init__(inference_model, emission_model, transition_model)
