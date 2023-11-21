@@ -6,6 +6,6 @@ from .dmm import (
     TransformerDMMContinuousFixedEmission,
     DMMBinary,
 )
-from .sde import SDEContinuousFixedTheta
+from .sde import SDEContinuousFixedEmission, SDEContinuous
 
 from .ARI import AutoRegressionIntegrated
