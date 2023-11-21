@@ -73,10 +73,7 @@ class DMMContinuousELBO(nn.Module):
         # model forward function
         latent_distribution, latent_samples = model.inference_model(observation_gt)
         emission_distribution = model.emission_model(latent_samples)
-        latent_samples2 = latent_distribution[0] + torch.randn_like(
-            latent_distribution[1]
-        ) * torch.exp(0.5 * latent_distribution[1])
-        transition_distribution = model.transition_model(latent_samples2)
+        transition_distribution = model.transition_model(latent_samples)
 
         # Add prior for t=0 and drop last prediction
         transition_distribution = impute_transition_distribution(
@@ -231,29 +228,32 @@ class DMMBinaryELBO(nn.Module):
             Used for logging
         """
         observation_gt = data[0]
+        mask = data[1]
 
         # model forward function
         latent_distribution, latent_samples = model.inference_model(observation_gt)
         emission_distribution = model.emission_model(latent_samples)
-        latent_samples2 = latent_distribution[0] + torch.randn_like(
-            latent_distribution[1]
-        ) * torch.exp(0.5 * latent_distribution[1])
-        transition_distribution = model.transition_model(latent_samples2)
+        transition_distribution = model.transition_model(latent_samples)
 
         # Add prior for t=0 and drop last prediction
         transition_distribution = impute_transition_distribution(
             transition_distribution, 0, 0
         )
 
-        logp_obs_loss = (
-            F.binary_cross_entropy(emission_distribution, observation_gt)
-            * observation_gt.shape[2]
+        logp_obs_loss = F.binary_cross_entropy_with_logits(
+            emission_distribution, observation_gt, weight=mask, reduction="sum"
         )
+        logp_obs_loss /= mask.sum()
+        logp_obs_loss *= observation_gt.shape[2]
 
-        kl_loss = (
-            gaussian_kl(*latent_distribution, *transition_distribution).mean()
-            * latent_distribution[0].shape[2]
+        kl_mask = (
+            torch.ones_like(latent_distribution[0], dtype=torch.bool) * mask[:, :, 0:1]
         )
+        kl_loss = (
+            gaussian_kl(*latent_distribution, *transition_distribution) * kl_mask
+        ).sum()
+        kl_loss /= kl_mask.sum()
+        kl_loss *= latent_distribution[0].shape[2]
 
         annealing_factor = 1
         if self.annealing_params["enabled"]:
@@ -304,18 +304,21 @@ class DMMBinaryELBO(nn.Module):
         """
         max_window_shift = max(eval_window_shifts)
         rolling_window_rmse = {i: [] for i in eval_window_shifts}
+
+        all_obs = data[0]
+
         for n in range(n_eval_windows):
-            n_observations = data.shape[1] - n - max_window_shift
+            n_observations = all_obs.shape[1] - n - max_window_shift
             if n_observations <= 0:
                 print(
                     "Warning: during RMSE rolling window evaluation, n_observations <= 0"
                 )
                 continue
-            observations = data[:, :n_observations, :]
+            observations = all_obs[:, :n_observations, :]
             preds, _ = model.predict_future(observations, max_window_shift)
             for shift in eval_window_shifts:
                 shift_preds = preds[:, n_observations + shift - 1, :]
-                shift_obs = data[:, n_observations + shift - 1, :]
+                shift_obs = all_obs[:, n_observations + shift - 1, :]
 
                 rmse = F.binary_cross_entropy(shift_preds.float(), shift_obs).item()
                 rolling_window_rmse[shift].append(rmse)
