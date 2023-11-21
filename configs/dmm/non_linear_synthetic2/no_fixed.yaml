@@ -1,4 +1,4 @@
-dataset_name: "linear_gssm"
+dataset_name: "nonlinear_gssm2"
 dataset_params:
   n_time_steps: 25
   n_train_samples: 5000
@@ -8,10 +8,12 @@ dataset_params:
   return_latents: False
   return_times: False
 
-model_name: "DMMContinuousFixedEmission"
+model_name: "DMMContinuous"
 model_params:
-  st_net_hidden_dim: 64
-  st_net_n_layers: 1
+  st_net_hidden_dim: 256
+  st_net_n_layers: 2
+  latent_dim: 1
+  obs_dim: 1
 
 loss_name: "DMMContinuousELBO"
 loss_params:
@@ -19,15 +21,15 @@ loss_params:
   z0_log_var: 0
   annealing_params:
     enabled: True
-    warm_up: 25 # How many epochs before start adding KL term
-    n_epochs_for_full: 100 # How many epochs to reach full KL term (will have weight 1 at this value + warmup)
+    warm_up: 20 # How many epochs before start adding KL term
+    n_epochs_for_full: 200 # How many epochs to reach full KL term (will have weight 1 at this value + warmup)
 
 trainer_name: "DeepTrainer"
 trainer_params:
-  n_epochs: 350
+  n_epochs: 150
   lr: 0.0005
   val_freq: 10 # Validate every 10 epochs
-  save_path: "models/dmm/fixed_emission/linear_synthetic.pth"
+  save_path: "models/dmm/nonlinear_synthetic2.pth"
   device: "cuda"
   verbose: False
   eval_window_shifts: [0, 1, 2, 3, 4, 5]

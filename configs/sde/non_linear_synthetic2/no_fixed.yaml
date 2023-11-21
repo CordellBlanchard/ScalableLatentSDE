@@ -1,0 +1,41 @@
+dataset_name: "nonlinear_gssm2"
+dataset_params:
+  n_time_steps: 25
+  n_train_samples: 5000
+  n_val_samples: 512
+  n_test_samples: 512
+  batch_size: 512
+  return_times: True
+
+model_name: "SDEContinuous"
+model_params:
+  n_euler_steps: 10
+  transition_hidden_size: 16
+  latent_dim: 1
+  obs_dim: 1
+
+loss_name: "SDEContinuousELBO"
+loss_params:
+  annealing_params:
+    enabled: True
+    warm_up: 20 # How many epochs before start adding KL term
+    n_epochs_for_full: 200 # How many epochs to reach full KL term (will have weight 1 at this value + warmup)
+  clipping_params:
+    enabled: False
+    clip_max: 100.0
+  prior_factor: 0.0
+
+trainer_name: "DeepTrainer"
+trainer_params:
+  n_epochs: 180
+  lr: 0.0005
+  val_freq: 10 # Validate every 10 epochs
+  save_path: "models/sde/non_linear_synthetic2.pth"
+  device: "cuda"
+  verbose: False
+  eval_window_shifts: [0,1,2,3,4,5]
+  n_eval_windows: 5 # How many times to shift the window (starting from the end) for evaluation
+  
+logger_name: "WandbLogger"
+logger_params: {}
+

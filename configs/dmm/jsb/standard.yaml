@@ -1,26 +1,28 @@
 dataset_name: "jsb_piano"
 dataset_params:
   subseq_len: 64
-  batch_size: 32
+  batch_size: 64
 
 model_name: "DMMBinary"
 model_params:
-  latent_dim: 400
+  latent_dim: 100
   obs_dim: 88
-  st_net_hidden_dim: 512
-  st_net_n_layers: 4
+  st_net_hidden_dim: 400
+  st_net_n_layers: 1
+  emission_hidden_size: 100
+  transition_hidden_size: 200
 
 loss_name: "DMMBinaryELBO"
 loss_params:
   annealing_params:
     enabled: True
-    warm_up: 3 # How many epochs before start adding KL term
-    n_epochs_for_full: 15 # How many epochs to reach full KL term (will have weight 1 at this value + warmup)
+    warm_up: 50 # How many epochs before start adding KL term
+    n_epochs_for_full: 30 # How many epochs to reach full KL term (will have weight 1 at this value + warmup)
 
 trainer_name: "DeepTrainer"
 trainer_params:
-  n_epochs: 25
-  lr: 0.0005
+  n_epochs: 1000
+  lr: 0.001
   val_freq: 10 # Validate every 10 epochs
   save_path: "models/dmm/jsb.pth"
   device: "cuda"

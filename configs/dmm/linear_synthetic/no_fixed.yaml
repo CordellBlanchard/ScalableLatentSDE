@@ -29,7 +29,7 @@ trainer_params:
   n_epochs: 350
   lr: 0.0005
   val_freq: 10 # Validate every 10 epochs
-  save_path: "models/dmm/linear_synthetic.pth"
+  save_path: "models/dmm/no_fixed/linear_synthetic.pth"
   device: "cuda"
   verbose: False
   eval_window_shifts: [0]
