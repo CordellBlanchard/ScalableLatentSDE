@@ -65,7 +65,7 @@ class DeepTrainer:
                 if isinstance(data, list):
                     data = [d.to(device) for d in data]
                 else:
-                    data = data.to(device)
+                    data = [data.to(device)]
 
                 loss, to_log = self.loss(self.model, data, epoch)
 
@@ -110,7 +110,7 @@ class DeepTrainer:
                 if isinstance(data, list):
                     data = [d.to(device) for d in data]
                 else:
-                    data = data.to(device)
+                    data = [data.to(device)]
 
                 _, to_log = self.loss(self.model, data, epoch)
                 for key, value in to_log.items():
