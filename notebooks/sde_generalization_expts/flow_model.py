@@ -138,7 +138,7 @@ class Flow(nn.Module):
 
     def __init__(self, n_layers: int = 4, hidden_dim: int = 8):
         super().__init__()
-        self.layers = nn.Sequential(*[FlowLayer(hidden_dim)])
+        self.layers = nn.Sequential(*[FlowLayer(hidden_dim)] * n_layers)
 
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """
