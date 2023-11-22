@@ -40,12 +40,14 @@ class SDEContinuousELBO(nn.Module):
         annealing_params: Dict[str, Union[bool, float]],
         clipping_params: Dict[str, Union[bool, float]],
         entropy_weight: float,
+        elog_weight: float,
         rmse_eval_latent: bool = False,
     ):
         super().__init__()
         self.annealing_params = annealing_params
         self.clipping_params = clipping_params
         self.entropy_weight = entropy_weight
+        self.elog_weight = elog_weight
         self.rmse_eval_latent = rmse_eval_latent
 
     def forward(
@@ -155,7 +157,9 @@ class SDEContinuousELBO(nn.Module):
                     / self.annealing_params["n_epochs_for_full"],
                     1,
                 )
-        total_loss = logp_obs_loss + annealing_factor * kl_loss_clipped
+        total_loss = (
+            logp_obs_loss + annealing_factor * self.elog_weight * kl_loss_clipped
+        )
         logging = {
             "Training loss": total_loss.item(),
             "log_p observation loss": logp_obs_loss.item(),
