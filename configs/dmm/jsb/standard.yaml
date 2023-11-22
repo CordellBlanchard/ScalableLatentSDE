@@ -21,15 +21,15 @@ loss_params:
 
 trainer_name: "DeepTrainer"
 trainer_params:
-  n_epochs: 1000
+  n_epochs: 200
   lr: 0.001
   val_freq: 10 # Validate every 10 epochs
-  save_path: "models/dmm/jsb.pth"
+  save_path: "models/dmm/jsb/standard_quarter_notes.pth"
   device: "cuda"
   verbose: False
   eval_window_shifts: [0,1,2,3,4,5]
   n_eval_windows: 5 # How many times to shift the window (starting from the end) for evaluation
   
-logger_name: "PrintLogger"
+logger_name: "WandbLogger"
 logger_params: {}
 

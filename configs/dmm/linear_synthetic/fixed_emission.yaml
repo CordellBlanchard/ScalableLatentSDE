@@ -4,30 +4,31 @@ dataset_params:
   n_train_samples: 5000
   n_val_samples: 512
   n_test_samples: 512
-  batch_size: 512
+  batch_size: 256
   return_latents: False
   return_times: False
 
 model_name: "DMMContinuousFixedEmission"
 model_params:
-  st_net_hidden_dim: 64
-  st_net_n_layers: 1
+  st_net_hidden_dim: 128
+  st_net_n_layers: 4
+  transition_hidden_dim: 512
 
 loss_name: "DMMContinuousELBO"
 loss_params:
   rmse_eval_latent: False
-  z0_log_var: 0
+  z0_log_var: 2.3025
   annealing_params:
     enabled: True
-    warm_up: 25 # How many epochs before start adding KL term
-    n_epochs_for_full: 100 # How many epochs to reach full KL term (will have weight 1 at this value + warmup)
+    warm_up: 50 # How many epochs before start adding KL term
+    n_epochs_for_full: 50 # How many epochs to reach full KL term (will have weight 1 at this value + warmup)
 
 trainer_name: "DeepTrainer"
 trainer_params:
-  n_epochs: 350
-  lr: 0.0005
+  n_epochs: 600
+  lr: 0.001
   val_freq: 10 # Validate every 10 epochs
-  save_path: "models/dmm/fixed_emission/linear_synthetic.pth"
+  save_path: "models/dmm/linear_synthetic/fixed_emission.pth"
   device: "cuda"
   verbose: False
   eval_window_shifts: [0, 1, 2, 3, 4, 5]

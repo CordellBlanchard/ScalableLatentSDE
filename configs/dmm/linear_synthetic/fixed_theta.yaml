@@ -24,15 +24,15 @@ loss_params:
 
 trainer_name: "DeepTrainer"
 trainer_params:
-  n_epochs: 600
-  lr: 0.1
+  n_epochs: 350
+  lr: 0.001
   val_freq: 10 # Validate every 10 epochs
-  save_path: "models/dmm/fixed_theta/linear_synthetic.pth"
+  save_path: "models/dmm/linear_synthetic/fixed_theta.pth"
   device: "cuda"
   verbose: False
   eval_window_shifts: [0]
   n_eval_windows: 5 # How many times to shift the window (starting from the end) for evaluation
   
-logger_name: "PrintLogger"
+logger_name: "WandbLogger"
 logger_params: {}
 

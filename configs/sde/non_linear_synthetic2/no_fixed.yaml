@@ -10,7 +10,7 @@ dataset_params:
 model_name: "SDEContinuous"
 model_params:
   n_euler_steps: 10
-  transition_hidden_size: 16
+  transition_hidden_size: 32
   latent_dim: 1
   obs_dim: 1
 
@@ -18,19 +18,21 @@ loss_name: "SDEContinuousELBO"
 loss_params:
   annealing_params:
     enabled: True
-    warm_up: 20 # How many epochs before start adding KL term
-    n_epochs_for_full: 200 # How many epochs to reach full KL term (will have weight 1 at this value + warmup)
+    warm_up: 2 # How many epochs before start adding KL term
+    n_epochs_for_full: 100 # How many epochs to reach full KL term (will have weight 1 at this value + warmup)
   clipping_params:
     enabled: False
     clip_max: 100.0
-  prior_factor: 0.0
+    clip_min: -100.0
+  entropy_weight: 0.5
+  elog_weight: 0.3
 
 trainer_name: "DeepTrainer"
 trainer_params:
-  n_epochs: 180
+  n_epochs: 150
   lr: 0.0005
   val_freq: 10 # Validate every 10 epochs
-  save_path: "models/sde/non_linear_synthetic2.pth"
+  save_path: "models/sde/non_linear_synthetic2/no_fixed.pth"
   device: "cuda"
   verbose: False
   eval_window_shifts: [0,1,2,3,4,5]
