@@ -1,0 +1,43 @@
+dataset_name: "linear_gssm"
+dataset_params:
+  n_time_steps: 25
+  n_train_samples: 5000
+  n_val_samples: 512
+  n_test_samples: 512
+  batch_size: 512
+  return_latents: False
+  return_times: False
+
+model_name: "ODEContinuousAdjoint"
+model_params:
+  latent_dim: 1
+  obs_dim: 1
+  emission_hidden_dim: 128
+  inference_hidden_size: 64
+  n_inference_layers: 2
+  transition_hidden_dim: 64
+  n_euler_steps: 10
+
+loss_name: "ODEContinuousELBO"
+loss_params:
+  z0_mean: 0
+  z0_log_var: 0
+  annealing_params:
+    enabled: True
+    warm_up: 25 # How many epochs before start adding KL term
+    n_epochs_for_full: 15 # How many epochs to reach full KL term (will have weight 1 at this value + warmup)
+
+trainer_name: "DeepTrainer"
+trainer_params:
+  n_epochs: 100
+  lr: 0.001
+  val_freq: 10 # Validate every 10 epochs
+  save_path: "models/ode/linear_synthetic/standard.pth"
+  device: "cuda"
+  verbose: False
+  eval_window_shifts: [0, 1, 2, 3, 4, 5]
+  n_eval_windows: 5 # How many times to shift the window (starting from the end) for evaluation
+  
+logger_name: "WandbLogger"
+logger_params: {}
+

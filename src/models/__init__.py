@@ -9,3 +9,5 @@ from .dmm import (
 from .sde import SDEContinuousFixedEmission, SDEContinuous
 
 from .ARI import AutoRegressionIntegrated
+
+from .ode import ODEContinuous, ODEContinuousAdjoint

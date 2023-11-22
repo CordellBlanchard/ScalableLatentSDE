@@ -13,3 +13,6 @@ from .sde_transition_models import (
     SDETransitionTimeIndep,
     SDETransitionTimeDep,
 )
+
+from .ode_inference_networks import RNNInferenceNetwork
+from .ode_transition_models import ODETransitionTimeIndep, ODEAdjoint
