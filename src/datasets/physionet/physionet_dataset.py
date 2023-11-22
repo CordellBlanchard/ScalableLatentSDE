@@ -23,41 +23,42 @@ class PhysionetDataset(Dataset):
         print("Loaded Physionet data")
 
         times = []
-        general_descs = []
+        discs = []
         missing_mask = []
         imputed_discretized_data = []
 
         for df in tqdm.tqdm(data):
             # Discritize the data using self.discretization_method.
             discretized = self.discretize(df)
-            discretized = discretized.drop(columns=['RecordID'])
-            general_descriptors = ['Age', 'Gender', 'Height', 'ICUType', 'Weight']
-            # Use forward imputation for the general descriptors.
-            discretized[general_descriptors] = discretized[general_descriptors].ffill()
-            discretized[general_descriptors] = discretized[general_descriptors].fillna(-1)
 
-            # Save times and general descriptors.
+            # Remove the general descriptors other than weight
+            general_descriptors = ['RecordID', 'Age', 'Gender', 'Height', 'ICUType']
+            discretized = discretized.drop(columns=general_descriptors)
+
+            # Save times and drop them from the data.
             times.append(discretized['Time'])
-            general_descs.append(discretized[general_descriptors])
+            discretized = discretized.drop(columns=['Time'])
+            discs.append(discretized)
 
-            # Indicate which values are missing for the columns that are not general descriptors or Time.
+            # Indicate which values are missing for the columns other than Time.
             # In the missing mask, 0 means missing and 1 means not missing.
-            discretized = discretized.drop(columns=general_descriptors + ['Time'])
             missing_mask.append(discretized.notna())
+        
+        print("Done discretizing")
 
-            # Normalize the data except for the columns containing general descriptors, missing information and time.
-            # means = discretized.mean()
-            # stds = discretized.std()
-            # normalized_discretized = (discretized-means) / stds
+        combined_dfs = pd.concat(discs, axis=0)
+        mins = combined_dfs.min()
+        maxs = combined_dfs.max()
+
+        for df in tqdm.tqdm(discs):
+            # Normalize the data to between 0 and 1. 
+            normalized_discretized = (df - mins) / (maxs - mins)
 
             # Impute the missing values using self.imputation_method.
-            # imputed_discretized_data.append(self.impute_missing(normalized_discretized))
-            imputed_discretized_data.append(self.impute_missing(discretized))
+            imputed_discretized_data.append(self.impute_missing(normalized_discretized))
             
-        print("Done discretizing and imputing Physionet data")
+        print("Done normalizing and imputing Physionet data")
 
-        # Concatenate the general descriptors and the imputed, discretized data.
-        imputed_discretized_data = [pd.concat([general_desc, df], axis=1) for general_desc, df in zip(general_descs, imputed_discretized_data)]
         # Convert to torch tensors.
         self.times = [torch.tensor(time.astype(float).values, dtype=torch.float32) for time in times]
         self.missing_mask = [torch.tensor(df.astype(float).values, dtype=torch.float32) for df in missing_mask]
@@ -124,8 +125,8 @@ class PhysionetDataset(Dataset):
         Discretize the data using the specified method.
         '''
         if self.discretization_method == "none":
-            # Convert time to hours from an integer rerpesenting minutes.
-            df['Time'] = df['Time'].map(lambda x: int(x / 60))
+            # Convert time to hours from an integer rerpesenting hours.
+            df['Time'] = df['Time'].map(lambda x: float(x / 60))
         elif self.discretization_method.isnumeric():
             # Discretize the data with intervals of size self.discretization_method minutes.
             df['Time'] = pd.to_datetime(df['Time'], unit='m')
@@ -133,7 +134,7 @@ class PhysionetDataset(Dataset):
             df = df.resample(f'{self.discretization_method}T').mean()
             df = df.reset_index()
             # Convert the time back to hours.
-            df['Time'] = df['Time'].map(lambda x: int(x.timestamp() / 3600))
+            df['Time'] = df['Time'].map(lambda x: float(x.timestamp() / 3600))
         else:
             raise ValueError("Invalid discretization method.")
 

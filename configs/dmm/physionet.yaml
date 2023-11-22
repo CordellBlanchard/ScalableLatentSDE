@@ -3,8 +3,8 @@ dataset_params:
   train_frac: 0.8
   val_frac: 0.1
   test_frac: 0.1
-  imputation_method: "mean"
-  discretization_method: "none"
+  imputation_method: "mean" # ["mean", "forward", "missing (fill with -1)", "linear_interpolation"]
+  discretization_method: "none" # ["none", "integer (# of minutes)"]
   time_in_data: True
   return_times: False
   missing_in_data: False
@@ -16,7 +16,7 @@ model_params:
   st_net_hidden_dim: 256
   st_net_n_layers: 2
   latent_dim: 100
-  obs_dim: 42
+  obs_dim: 38
 
 loss_name: "DMMContinuousELBO"
 loss_params:
