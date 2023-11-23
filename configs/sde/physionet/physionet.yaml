@@ -11,32 +11,37 @@ dataset_params:
   return_missing_mask: True
   batch_size: 128
 
-model_name: "DMMContinuous"
+model_name: "SDEContinuous"
 model_params:
-  st_net_hidden_dim: 256
-  st_net_n_layers: 2
+  n_euler_steps: 10
+  transition_hidden_size: 256
   latent_dim: 100
   obs_dim: 38
-  transition_hidden_dim: 256
-  emission_hidden_size: 256
 
-loss_name: "DMMContinuousELBOMasked"
+loss_name: "SDEContinuousELBO"
 loss_params:
-  rmse_eval_latent: False
   annealing_params:
     enabled: True
-    warm_up: 5 # How many epochs before start adding KL term
-    n_epochs_for_full: 50 # How many epochs to reach full KL term (will have weight 1 at this value + warmup)
+    warm_up: 1 # How many epochs before start adding KL term
+    n_epochs_for_full: 100 # How many epochs to reach full KL term (will have weight 1 at this value + warmup)
+  clipping_params:
+    enabled: True
+    clip_max: 10000.0
+    clip_min: 1.0
+  entropy_weight: 0.4
+  entropy_q_weight: 0.0
+  elog_weight: 0.6
+  n_entropy_samples: 10
 
 trainer_name: "DeepTrainer"
 trainer_params:
   n_epochs: 1000
   lr: 0.0005
   val_freq: 10 # Validate every 10 epochs
-  save_path: "models/dmm/physionet/standard.pth"
+  save_path: "models/sde/physionet.pth"
   device: "cuda"
   verbose: False
-  eval_window_shifts: [0, 1, 2, 3, 4, 5]
+  eval_window_shifts: [0,1,2,3,4,5]
   n_eval_windows: 5 # How many times to shift the window (starting from the end) for evaluation
   
 logger_name: "WandbLogger"
