@@ -18,14 +18,16 @@ loss_name: "SDEContinuousELBO"
 loss_params:
   annealing_params:
     enabled: True
-    warm_up: 2 # How many epochs before start adding KL term
+    warm_up: 5 # How many epochs before start adding KL term
     n_epochs_for_full: 100 # How many epochs to reach full KL term (will have weight 1 at this value + warmup)
   clipping_params:
-    enabled: False
-    clip_max: 100.0
-    clip_min: -100.0
-  entropy_weight: 0.5
-  elog_weight: 0.3
+    enabled: True
+    clip_max: 10000.0
+    clip_min: 0
+  entropy_weight: 0.0
+  entropy_q_weight: 0.0
+  elog_weight: 1.0
+  n_entropy_samples: 10
 
 trainer_name: "DeepTrainer"
 trainer_params:
