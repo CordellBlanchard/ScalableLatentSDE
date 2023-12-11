@@ -55,7 +55,8 @@ class PhysionetDataset(Dataset):
             normalized_discretized = (df - mins) / (maxs - mins)
 
             # Impute the missing values using self.imputation_method.
-            imputed_discretized_data.append(self.impute_missing(normalized_discretized))
+            imputed = self.impute_missing(normalized_discretized)
+            imputed_discretized_data.append(imputed)
             
         print("Done normalizing and imputing Physionet data")
 
@@ -110,10 +111,10 @@ class PhysionetDataset(Dataset):
             # Fill in NaNs before the first observation with -1.
             df = df.fillna(-1)
         elif self.imputation_method == "mean":
-            # If all the values for a variable are -1, set the mean to -1.
+            # If all the values for a variable are nan, set the mean to 0.
             # Otherwise, compute the mean of all the values for each variable.
             means = df.mean()
-            means.fillna(-1, inplace=True)
+            means.fillna(0, inplace=True)
             df = df.fillna(means)
         else:
             raise ValueError("Invalid imputation method.")

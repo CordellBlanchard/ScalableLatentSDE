@@ -32,7 +32,7 @@ def collate_fn(
     if isinstance(batch[0], tuple):
         data, times = zip(*batch)
         data = pad_sequence(data, batch_first=True)
-        times = pad_sequence(times, batch_first=True)
+        times = pad_sequence(times, batch_first=True, padding_value=50) # 50 is greater than 48, the max time in the dataset
         return data, times
     else:
         return pad_sequence(batch, batch_first=True)

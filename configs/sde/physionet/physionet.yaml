@@ -3,10 +3,10 @@ dataset_params:
   train_frac: 0.8
   val_frac: 0.1
   test_frac: 0.1
-  imputation_method: "missing" # ["mean", "forward", "missing (fill with -1)", "linear_interpolation"]
+  imputation_method: "mean" # ["mean", "forward", "missing (fill with -1)", "linear_interpolation"]
   discretization_method: "30" # ["none", "integer (# of minutes)"]
   time_in_data: True
-  return_times: False
+  return_times: True
   missing_in_data: False
   return_missing_mask: True
   batch_size: 128
