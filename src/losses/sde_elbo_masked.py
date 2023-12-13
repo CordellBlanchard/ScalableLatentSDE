@@ -1,16 +1,16 @@
 """
-ELBO loss for the DMM model, both continuous and discrete observations
+Similar to ELBO loss for the SDE model, both continuous and discrete observations
 """
 from typing import Dict, Union, Tuple, List
 
 import torch
 from torch import nn
-import torch.nn.functional as F
+import torch.distributions as td
 
-from .utils import gaussian_kl, gaussian_nll, impute_transition_distribution
-import numpy as np
+from .utils import gaussian_nll, entropy_upper_bound
 
-class DMMContinuousELBOMasked(nn.Module):
+
+class SDEContinuousELBOMasked(nn.Module):
     """
     Compute the ELBO loss for the DMM model, as described in section 3 in the paper:
     Structured Inference Networks for Nonlinear State Space Models, Krishnan et al., 2016
@@ -25,28 +25,43 @@ class DMMContinuousELBOMasked(nn.Module):
             "n_epochs_for_full": 100, # number of epochs to wait
                                        # (after warm_up) before reaching full KL weight
         }
-    rmse_eval_latent : bool, by default False
-        Whether to evaluate RMSE on the latent space
-        (not just the observation space)
+    clipping_params : Dict[str, Union[bool, float]]
+        Structured as follows:
+        {
+            "enabled": True, # whether to use clipping
+            "clip_max": 100, # maximum value for the clipped loss
+        }
+    entropy_weight : float
+        Weight for the entropy term in the Pseudo-ELBO
+    elog_weight : float
+        Weight for the E[log q(z_t | z_{t-1})] term in the Pseudo-ELBO
+    n_entropy_samples : int
+        Number of samples to use for estimating the entropy of p(z_t | z_{t-1})
     """
 
     def __init__(
         self,
         annealing_params: Dict[str, Union[bool, float]],
+        clipping_params: Dict[str, Union[bool, float]],
+        entropy_weight: float,
+        entropy_q_weight: float,
+        elog_weight: float,
+        n_entropy_samples: int,
         rmse_eval_latent: bool = False,
-        z0_mean: float = 0,
-        z0_log_var: float = 0,
     ):
         super().__init__()
         self.annealing_params = annealing_params
+        self.clipping_params = clipping_params
+        self.entropy_weight = entropy_weight
+        self.entropy_q_weight = entropy_q_weight
+        self.elog_weight = elog_weight
         self.rmse_eval_latent = rmse_eval_latent
-        self.z0_mean = z0_mean
-        self.z0_log_var = z0_log_var
+        self.n_entropy_samples = n_entropy_samples
 
     def forward(
         self,
         model: nn.Module,
-        data: Union[torch.Tensor, List[torch.Tensor]],
+        inputs: List[torch.Tensor],
         epoch: int = 0,
     ) -> Tuple[torch.Tensor, Dict[str, float]]:
         """
@@ -54,8 +69,10 @@ class DMMContinuousELBOMasked(nn.Module):
 
         Parameters
         ----------
-        data : torch.Tensor
-            Ground truth observations, x_{1:T}
+        model: nn.Module
+            SDE model to use for prediction
+        inputs : List[torch.Tensor]
+            inputs[0]: Ground truth observations, x_{1:T}
             shape = (batch_size, time_steps, obs_dim)
         epoch : int, by default 0
             Which epoch this loss is in, needed for annealing
@@ -68,39 +85,87 @@ class DMMContinuousELBOMasked(nn.Module):
             Dictionary of losses for each component of the ELBO
             Used for logging
         """
-        observation_gt = data[0]
-        mask = data[1]
+        observations = inputs[0]
+        mask = inputs[1]
+        time_steps = inputs[-1]
 
-        # model forward function
-        latent_distribution, latent_samples = model.inference_model(observation_gt)
+        latent_distribution, latent_samples = model.inference_model(observations)
         emission_distribution = model.emission_model(latent_samples)
         latent_samples2 = latent_distribution[0] + torch.randn_like(
             latent_distribution[1]
         ) * torch.exp(0.5 * latent_distribution[1])
-        transition_distribution = model.transition_model(latent_samples2)
 
-        # Add prior for t=0 and drop last prediction
-        transition_distribution = impute_transition_distribution(
-            transition_distribution, self.z0_mean, self.z0_log_var
+        # Transition model forward pass
+        batch_size, n_time_steps, latent_dim = latent_samples2.shape
+        start_times = time_steps[:, :-1].reshape(-1, 1)
+        end_times = time_steps[:, 1:].reshape(-1, 1)
+        dt = (end_times - start_times) / model.transition_model.n_euler_steps
+        transition_distribution = model.transition_model(
+            # latent_samples2[:, :-1].reshape(-1, latent_dim), start_times, dt
+            latent_samples2[:, :-1].reshape(-1, latent_dim), 0, 5e-2
+        )
+        z_samples = transition_distribution[0][-1].reshape(
+            batch_size, (n_time_steps - 1), latent_dim
         )
 
         logp_obs_loss = (
             gaussian_nll(
                 emission_distribution[0],
                 emission_distribution[1],
-                observation_gt,
+                observations,
             )*mask
-            * observation_gt.shape[2]
+            * observations.shape[2]
         )
+
         logp_obs_loss = logp_obs_loss.sum() / mask.sum()
 
         kl_mask = mask.sum(dim=2) > 0
-        kl_mask = kl_mask.float().reshape(-1, mask.shape[1], 1)
-        kl_loss = ( 
-            gaussian_kl(*latent_distribution, *transition_distribution)*kl_mask
+        kl_mask = kl_mask.float().reshape(-1, mask.shape[1], 1)[:, 1:]
+
+        E_p_log_q = (
+            gaussian_nll(
+                latent_distribution[0][:, 1:],
+                latent_distribution[1][:, 1:],
+                z_samples,
+            ) * kl_mask
+            * latent_dim
+        )
+
+        E_p_log_q = E_p_log_q.sum() / kl_mask.sum()
+
+        entropy_q = (
+            0.5
+            * (latent_distribution[1] + torch.log(2 * torch.tensor(3.1415)) + 1).mean()
             * latent_distribution[0].shape[2]
         )
-        kl_loss = kl_loss.sum() / kl_mask.sum()
+
+        # Estimate upper bound for entropy of p(z_t | z_{t-1})
+        n_samples = self.n_entropy_samples
+        to_pass = torch.ones((n_samples, batch_size, n_time_steps, latent_dim)).to(
+            latent_samples2.device
+        )
+        to_pass *= latent_samples2.reshape(1, batch_size, n_time_steps, latent_dim)
+        transition_distribution = model.transition_model(
+            to_pass.reshape(batch_size * n_samples * n_time_steps, latent_dim),
+            0,
+            5e-2,
+        )
+        entropy_p_samples = transition_distribution[0][-1].reshape(
+            n_samples, batch_size, n_time_steps, latent_dim
+        )
+        entropy_p = entropy_upper_bound(entropy_p_samples).mean()
+
+        # kl_loss = -1*KL(p||q)
+        kl_loss = self.elog_weight * E_p_log_q - self.entropy_weight * entropy_p
+
+        if self.clipping_params["enabled"]:
+            kl_loss_clipped = torch.clamp(
+                kl_loss,
+                max=self.clipping_params["clip_max"],
+                min=self.clipping_params["clip_min"],
+            )
+        else:
+            kl_loss_clipped = kl_loss
 
         annealing_factor = 1
         if self.annealing_params["enabled"]:
@@ -112,13 +177,21 @@ class DMMContinuousELBOMasked(nn.Module):
                     / self.annealing_params["n_epochs_for_full"],
                     1,
                 )
-        total_loss = logp_obs_loss + annealing_factor * kl_loss
+        total_loss = (
+            logp_obs_loss
+            + annealing_factor * kl_loss_clipped
+            + self.entropy_q_weight * entropy_q
+        )
         logging = {
             "Training loss": total_loss.item(),
             "log_p observation loss": logp_obs_loss.item(),
             "KL loss": kl_loss.item(),
+            "KL loss clipped": kl_loss_clipped.item(),
             "logp + kl loss": logp_obs_loss.item() + kl_loss.item(),
             "annealing_factor": annealing_factor,
+            "entropy_q": entropy_q.item(),
+            "entropy_p": entropy_p.item(),
+            "E_p_log_q": E_p_log_q.item(),
             "epoch": epoch,
         }
         return total_loss, logging
@@ -126,7 +199,7 @@ class DMMContinuousELBOMasked(nn.Module):
     def rolling_window_eval(
         self,
         model: nn.Module,
-        data: torch.Tensor,
+        data: Tuple[torch.Tensor, torch.Tensor],
         eval_window_shifts: List[int],
         n_eval_windows: int,
     ) -> Dict[int, List[float]]:
@@ -137,8 +210,9 @@ class DMMContinuousELBOMasked(nn.Module):
         ----------
         model : nn.Module
             Model to use for prediction
-        data : torch.Tensor
-            Data to use for evaluation, observations, shape = (batch_size, time_steps, obs_dim)
+        data : Tuple[torch.Tensor, torch.Tensor]
+            Inputs, first element is observations, shape = (batch_size, time_steps, obs_dim)
+            Second element is time steps, shape = (batch_size, time_steps)
         eval_window_shifts : List[int]
             List of shifts to use for evaluation
         n_eval_windows : int
@@ -151,12 +225,8 @@ class DMMContinuousELBOMasked(nn.Module):
         """
         max_window_shift = max(eval_window_shifts)
         rolling_window_rmse = {i: [] for i in eval_window_shifts}
-        if self.rmse_eval_latent and len(eval_window_shifts) > 1:
-            raise ValueError(
-                "Can only evaluate RMSE on latent space if eval_window_shifts = [0]"
-            )
-
         all_obs = data[0]
+        all_times = data[-1]
         mask = data[1]
 
         for n in range(n_eval_windows):
@@ -166,16 +236,20 @@ class DMMContinuousELBOMasked(nn.Module):
                     "Warning: during RMSE rolling window evaluation, n_observations <= 0"
                 )
                 continue
-            observations = all_obs[:, :n_observations, :]
             if self.rmse_eval_latent:
                 inf_out, _ = model.inference_model(all_obs)
                 latents = inf_out[0]
                 shift_preds = latents
-                # shift_gt = all_latent
+                # shift_gt = all_latents
                 # rmse = torch.sqrt(torch.mean((shift_preds - shift_gt) ** 2)).item()
                 # rolling_window_rmse[0].append(rmse)
             else:
-                preds, _ = model.predict_future(observations, max_window_shift)
+                observations = all_obs[:, :n_observations, :]
+                cur_time_steps = all_times[:, :n_observations]
+                fut_time_steps = all_times[:, : n_observations + max_window_shift]
+                preds, _ = model.predict_future(
+                    [observations, cur_time_steps], fut_time_steps
+                )
                 for shift in eval_window_shifts:
                     shift_preds = preds[:, n_observations + shift - 1, 1:]
                     shift_obs = all_obs[:, n_observations + shift - 1, 1:]
@@ -184,5 +258,4 @@ class DMMContinuousELBOMasked(nn.Module):
                     rmse = diff_sq.float().sum()
                     rmse /= mask[:, n_observations + shift - 1, 1:].float().sum()
                     rolling_window_rmse[shift].append(torch.sqrt(rmse).item())
-
         return rolling_window_rmse

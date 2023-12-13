@@ -29,11 +29,17 @@ def collate_fn(
     Union[Tuple[torch.Tensor, torch.Tensor], torch.Tensor]
         Collated batch
     """
-    if isinstance(batch[0], tuple):
+    if isinstance(batch[0], tuple) and len(batch[0]) == 2:
         data, times = zip(*batch)
         data = pad_sequence(data, batch_first=True)
         times = pad_sequence(times, batch_first=True, padding_value=50) # 50 is greater than 48, the max time in the dataset
         return data, times
+    elif isinstance(batch[0], tuple) and len(batch[0]) == 3:
+        data, missing, times = zip(*batch)
+        data = pad_sequence(data, batch_first=True)
+        missing = pad_sequence(missing, batch_first=True)
+        times = pad_sequence(times, batch_first=True, padding_value=50) # 50 is greater than 48, the max time in the dataset
+        return data, missing, times
     else:
         return pad_sequence(batch, batch_first=True)
 

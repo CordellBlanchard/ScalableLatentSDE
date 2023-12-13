@@ -4,7 +4,7 @@ dataset_params:
   val_frac: 0.1
   test_frac: 0.1
   imputation_method: "mean" # ["mean", "forward", "missing (fill with -1)", "linear_interpolation"]
-  discretization_method: "30" # ["none", "integer (# of minutes)"]
+  discretization_method: "300" # ["none", "integer (# of minutes)"]
   time_in_data: True
   return_times: True
   missing_in_data: False
@@ -18,11 +18,11 @@ model_params:
   latent_dim: 100
   obs_dim: 38
 
-loss_name: "SDEContinuousELBO"
+loss_name: "SDEContinuousELBOMasked"
 loss_params:
   annealing_params:
-    enabled: True
-    warm_up: 1 # How many epochs before start adding KL term
+    enabled: False
+    warm_up: 0 # How many epochs before start adding KL term
     n_epochs_for_full: 100 # How many epochs to reach full KL term (will have weight 1 at this value + warmup)
   clipping_params:
     enabled: True
