@@ -33,6 +33,10 @@ class SDEContinuousELBO(nn.Module):
         }
     entropy_weight : float
         Weight for the entropy term in the Pseudo-ELBO
+    elog_weight : float
+        Weight for the E[log q(z_t | z_{t-1})] term in the Pseudo-ELBO
+    n_entropy_samples : int
+        Number of samples to use for estimating the entropy of p(z_t | z_{t-1})
     """
 
     def __init__(
@@ -40,15 +44,19 @@ class SDEContinuousELBO(nn.Module):
         annealing_params: Dict[str, Union[bool, float]],
         clipping_params: Dict[str, Union[bool, float]],
         entropy_weight: float,
+        entropy_q_weight: float,
         elog_weight: float,
+        n_entropy_samples: int,
         rmse_eval_latent: bool = False,
     ):
         super().__init__()
         self.annealing_params = annealing_params
         self.clipping_params = clipping_params
         self.entropy_weight = entropy_weight
+        self.entropy_q_weight = entropy_q_weight
         self.elog_weight = elog_weight
         self.rmse_eval_latent = rmse_eval_latent
+        self.n_entropy_samples = n_entropy_samples
 
     def forward(
         self,
@@ -120,7 +128,7 @@ class SDEContinuousELBO(nn.Module):
         )
 
         # Estimate upper bound for entropy of p(z_t | z_{t-1})
-        n_samples = 10
+        n_samples = self.n_entropy_samples
         to_pass = torch.ones((n_samples, batch_size, n_time_steps, latent_dim)).to(
             latent_samples.device
         )
@@ -136,7 +144,7 @@ class SDEContinuousELBO(nn.Module):
         entropy_p = entropy_upper_bound(entropy_p_samples).mean()
 
         # kl_loss = -1*KL(p||q)
-        kl_loss = E_p_log_q - self.entropy_weight * entropy_p
+        kl_loss = self.elog_weight * E_p_log_q - self.entropy_weight * entropy_p
 
         if self.clipping_params["enabled"]:
             kl_loss_clipped = torch.clamp(
@@ -158,7 +166,9 @@ class SDEContinuousELBO(nn.Module):
                     1,
                 )
         total_loss = (
-            logp_obs_loss + annealing_factor * self.elog_weight * kl_loss_clipped
+            logp_obs_loss
+            + annealing_factor * kl_loss_clipped
+            + self.entropy_q_weight * entropy_q
         )
         logging = {
             "Training loss": total_loss.item(),

@@ -71,14 +71,26 @@ def replace_invalid_values(df):
 
 
 
-patient_dfs = []
+dfs = []
+
 for f in os.listdir(physionet_path + 'set-a/'):
     if not f.endswith('.txt'):
         continue
 
     # Read all time series data for one patient.    
     patient_df = pd.read_csv(physionet_path + 'set-a/' + f)
+    dfs.append(patient_df)
 
+for f in os.listdir(physionet_path + 'set-b/'):
+    if not f.endswith('.txt'):
+        continue
+
+    # Read all time series data for one patient.    
+    patient_df = pd.read_csv(physionet_path + 'set-b/' + f)
+    dfs.append(patient_df)
+
+patient_dfs = []
+for patient_df in dfs:
     # Replace invalid values: 
     patient_df = replace_invalid_values(patient_df)
 

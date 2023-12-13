@@ -23,7 +23,10 @@ loss_params:
   clipping_params:
     enabled: True
     clip_max: 100.0
-  prior_factor: 0.0
+    clip_min: -100.0
+  entropy_weight: 0.5
+  elog_weight: 1.0
+  n_entropy_samples: 10
 
 trainer_name: "DeepTrainer"
 trainer_params:

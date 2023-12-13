@@ -62,7 +62,7 @@ class DeepTrainer:
             for data in self.dataloaders["train"]:
                 optimizer.zero_grad()
 
-                if isinstance(data, list):
+                if isinstance(data, list) or isinstance(data, tuple):
                     data = [d.to(device) for d in data]
                 else:
                     data = [data.to(device)]
@@ -107,7 +107,7 @@ class DeepTrainer:
             eval_metrics = {}
             rolling_window_rmse = {i: [] for i in self.params["eval_window_shifts"]}
             for data in dataloader:
-                if isinstance(data, list):
+                if isinstance(data, list) or isinstance(data, tuple):
                     data = [d.to(device) for d in data]
                 else:
                     data = [data.to(device)]

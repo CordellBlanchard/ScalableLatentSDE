@@ -32,7 +32,7 @@ def collate_fn(
     if isinstance(batch[0], tuple):
         data, times = zip(*batch)
         data = pad_sequence(data, batch_first=True)
-        times = pad_sequence(times, batch_first=True)
+        times = pad_sequence(times, batch_first=True, padding_value=50) # 50 is greater than 48, the max time in the dataset
         return data, times
     else:
         return pad_sequence(batch, batch_first=True)
@@ -48,7 +48,8 @@ def get_physionet_dataloaders(
     batch_size: int,
     time_in_data: bool = False,
     return_times: bool = False,
-    missing_in_data: bool = False
+    missing_in_data: bool = False,
+    return_missing_mask: bool = False,
 ) -> Dict[str, DataLoader]:
     """
     General function to get dataloaders for Physionet datasets
@@ -72,7 +73,9 @@ def get_physionet_dataloaders(
     return_times: bool
         If True, return times as a separate tensor
     missing_in_data: bool
-        If True, include missingness indicators in the data
+        If True, include missingness mask in the data
+    return_missing_mask: bool
+        If True, return missingness mask as a separate tensor
     batch_size : int
         Batch size
 
@@ -81,7 +84,7 @@ def get_physionet_dataloaders(
     Dict[str, DataLoader]
         Dictionary of dataloaders for train, val, and test sets
     """
-    physionet_dataset = dataset_class(imputation_method, discretization_method, time_in_data, return_times, missing_in_data)
+    physionet_dataset = dataset_class(imputation_method, discretization_method, time_in_data, return_times, missing_in_data, return_missing_mask)
 
     # Split physionet dataset into train, val, and test sets
     train_dataset, val_dataset, test_dataset = torch.utils.data.random_split(physionet_dataset, [train_frac, val_frac, test_frac])

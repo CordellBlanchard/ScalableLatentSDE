@@ -1,40 +1,44 @@
-dataset_name: "nonlinear_gssm2"
+dataset_name: "physionet"
 dataset_params:
-  n_time_steps: 25
-  n_train_samples: 5000
-  n_val_samples: 512
-  n_test_samples: 512
-  batch_size: 512
+  train_frac: 0.8
+  val_frac: 0.1
+  test_frac: 0.1
+  imputation_method: "mean" # ["mean", "forward", "missing (fill with -1)", "linear_interpolation"]
+  discretization_method: "30" # ["none", "integer (# of minutes)"]
+  time_in_data: True
   return_times: True
+  missing_in_data: False
+  return_missing_mask: True
+  batch_size: 128
 
 model_name: "SDEContinuous"
 model_params:
   n_euler_steps: 10
-  transition_hidden_size: 32
-  latent_dim: 1
-  obs_dim: 1
+  transition_hidden_size: 256
+  latent_dim: 100
+  obs_dim: 38
 
 loss_name: "SDEContinuousELBO"
 loss_params:
   annealing_params:
     enabled: True
-    warm_up: 5 # How many epochs before start adding KL term
+    warm_up: 1 # How many epochs before start adding KL term
     n_epochs_for_full: 100 # How many epochs to reach full KL term (will have weight 1 at this value + warmup)
   clipping_params:
     enabled: True
     clip_max: 10000.0
-    clip_min: 0
-  entropy_weight: 0.0
+    clip_min: 1.0
+  entropy_weight: 0.4
   entropy_q_weight: 0.0
-  elog_weight: 1.0
+  elog_weight: 0.6
   n_entropy_samples: 10
 
 trainer_name: "DeepTrainer"
 trainer_params:
-  n_epochs: 150
+  n_epochs: 1000
   lr: 0.0005
   val_freq: 10 # Validate every 10 epochs
-  save_path: "models/sde/non_linear_synthetic2/no_fixed.pth"
+  save_path: "models/sde/physionet.pth"
   device: "cuda"
   verbose: False
   eval_window_shifts: [0,1,2,3,4,5]

@@ -10,7 +10,7 @@ sys.path.append(parent_dir)
 from src.models import *
 
 import yaml
-from typing import Tuple, Any
+from typing import Tuple, Any, List
 
 import torch
 import numpy as np
@@ -21,6 +21,7 @@ def plot_synthetic_dataset(
     observations: torch.Tensor,
     latents: torch.Tensor,
     models: Tuple[torch.nn.Module, torch.nn.Module, Any],
+    which_to_plot: List[bool] = [True, True, True, True],
 ) -> None:
     """
     Takes as input the observations, latents and models and plots the results.
@@ -73,73 +74,88 @@ def plot_synthetic_dataset(
     # plot latent with confidence interval
     plt.title("Latents")
     plt.plot(latents[i, :, 0].numpy(), color="blue", label="Ground Truth")
-    plt.plot(dmm_latent_means[i, :, 0].detach().numpy(), color="orange", label="DMM")
-    plt.fill_between(
-        np.arange(dmm_latent_means.shape[1]),
-        dmm_latent_means[i, :, 0].detach().numpy()
-        - 2 * torch.exp(0.5 * dmm_latent_log_var[i, :, 0]).detach().numpy(),
-        dmm_latent_means[i, :, 0].detach().numpy()
-        + 2 * torch.exp(0.5 * dmm_latent_log_var[i, :, 0]).detach().numpy(),
-        alpha=0.2,
-        color="orange",
-    )
-    plt.plot(sde_latent_means[i, :, 0].detach().numpy(), label="SDE")
-    plt.fill_between(
-        np.arange(sde_latent_means.shape[1]),
-        sde_latent_means[i, :, 0].detach().numpy()
-        - 2 * torch.exp(0.5 * sde_latent_log_var[i, :, 0]).detach().numpy(),
-        sde_latent_means[i, :, 0].detach().numpy()
-        + 2 * torch.exp(0.5 * sde_latent_log_var[i, :, 0]).detach().numpy(),
-        alpha=0.2,
-        color="green",
-    )
-    plt.plot(ode_latent_means[i, :, 0].detach().numpy(), color="black", label="ODE")
-    plt.fill_between(
-        np.arange(ode_latent_means.shape[1]),
-        ode_latent_means[i, :, 0].detach().numpy()
-        - 2 * torch.exp(0.5 * ode_latent_log_var[i, :, 0]).detach().numpy(),
-        ode_latent_means[i, :, 0].detach().numpy()
-        + 2 * torch.exp(0.5 * ode_latent_log_var[i, :, 0]).detach().numpy(),
-        alpha=0.2,
-        color="black",
-    )
+    if which_to_plot[0]:
+        plt.plot(
+            dmm_latent_means[i, :, 0].detach().numpy(), color="orange", label="DMM"
+        )
+        plt.fill_between(
+            np.arange(dmm_latent_means.shape[1]),
+            dmm_latent_means[i, :, 0].detach().numpy()
+            - 2 * torch.exp(0.5 * dmm_latent_log_var[i, :, 0]).detach().numpy(),
+            dmm_latent_means[i, :, 0].detach().numpy()
+            + 2 * torch.exp(0.5 * dmm_latent_log_var[i, :, 0]).detach().numpy(),
+            alpha=0.2,
+            color="orange",
+        )
+    if which_to_plot[1]:
+        plt.plot(sde_latent_means[i, :, 0].detach().numpy(), label="SDE", color="green")
+        plt.fill_between(
+            np.arange(sde_latent_means.shape[1]),
+            sde_latent_means[i, :, 0].detach().numpy()
+            - 2 * torch.exp(0.5 * sde_latent_log_var[i, :, 0]).detach().numpy(),
+            sde_latent_means[i, :, 0].detach().numpy()
+            + 2 * torch.exp(0.5 * sde_latent_log_var[i, :, 0]).detach().numpy(),
+            alpha=0.2,
+            color="green",
+        )
+    if which_to_plot[2]:
+        plt.plot(ode_latent_means[i, :, 0].detach().numpy(), color="black", label="ODE")
+        plt.fill_between(
+            np.arange(ode_latent_means.shape[1]),
+            ode_latent_means[i, :, 0].detach().numpy()
+            - 2 * torch.exp(0.5 * ode_latent_log_var[i, :, 0]).detach().numpy(),
+            ode_latent_means[i, :, 0].detach().numpy()
+            + 2 * torch.exp(0.5 * ode_latent_log_var[i, :, 0]).detach().numpy(),
+            alpha=0.2,
+            color="black",
+        )
     plt.legend()
     plt.grid()
     plt.show()
 
     plt.title("Observations")
     plt.plot(observations[i, :, 0].detach().numpy(), color="blue", label="Ground Truth")
-    plt.plot(dmm_emission_means[i, :, 0].detach().numpy(), color="orange", label="DMM")
-    plt.fill_between(
-        np.arange(dmm_emission_means.shape[1]),
-        dmm_emission_means[i, :, 0].detach().numpy()
-        - 2 * torch.exp(0.5 * dmm_emission_log_var[i, :, 0]).detach().numpy(),
-        dmm_emission_means[i, :, 0].detach().numpy()
-        + 2 * torch.exp(0.5 * dmm_emission_log_var[i, :, 0]).detach().numpy(),
-        alpha=0.2,
-        color="orange",
-    )
-    plt.plot(sde_emission_means[i, :, 0].detach().numpy(), color="green", label="SDE")
-    plt.fill_between(
-        np.arange(sde_emission_means.shape[1]),
-        sde_emission_means[i, :, 0].detach().numpy()
-        - 2 * torch.exp(0.5 * sde_emission_log_var[i, :, 0]).detach().numpy(),
-        sde_emission_means[i, :, 0].detach().numpy()
-        + 2 * torch.exp(0.5 * sde_emission_log_var[i, :, 0]).detach().numpy(),
-        alpha=0.2,
-        color="green",
-    )
-    plt.plot(ode_emission_means[i, :, 0].detach().numpy(), color="black", label="ODE")
-    plt.fill_between(
-        np.arange(ode_emission_means.shape[1]),
-        ode_emission_means[i, :, 0].detach().numpy()
-        - 2 * torch.exp(0.5 * ode_emission_log_var[i, :, 0]).detach().numpy(),
-        ode_emission_means[i, :, 0].detach().numpy()
-        + 2 * torch.exp(0.5 * ode_emission_log_var[i, :, 0]).detach().numpy(),
-        alpha=0.2,
-        color="black",
-    )
-    plt.plot(predictions[i], label="ARI", color="red")
+    if which_to_plot[0]:
+        plt.plot(
+            dmm_emission_means[i, :, 0].detach().numpy(), color="orange", label="DMM"
+        )
+        plt.fill_between(
+            np.arange(dmm_emission_means.shape[1]),
+            dmm_emission_means[i, :, 0].detach().numpy()
+            - 2 * torch.exp(0.5 * dmm_emission_log_var[i, :, 0]).detach().numpy(),
+            dmm_emission_means[i, :, 0].detach().numpy()
+            + 2 * torch.exp(0.5 * dmm_emission_log_var[i, :, 0]).detach().numpy(),
+            alpha=0.2,
+            color="orange",
+        )
+    if which_to_plot[1]:
+        plt.plot(
+            sde_emission_means[i, :, 0].detach().numpy(), color="green", label="SDE"
+        )
+        plt.fill_between(
+            np.arange(sde_emission_means.shape[1]),
+            sde_emission_means[i, :, 0].detach().numpy()
+            - 2 * torch.exp(0.5 * sde_emission_log_var[i, :, 0]).detach().numpy(),
+            sde_emission_means[i, :, 0].detach().numpy()
+            + 2 * torch.exp(0.5 * sde_emission_log_var[i, :, 0]).detach().numpy(),
+            alpha=0.2,
+            color="green",
+        )
+    if which_to_plot[2]:
+        plt.plot(
+            ode_emission_means[i, :, 0].detach().numpy(), color="black", label="ODE"
+        )
+        plt.fill_between(
+            np.arange(ode_emission_means.shape[1]),
+            ode_emission_means[i, :, 0].detach().numpy()
+            - 2 * torch.exp(0.5 * ode_emission_log_var[i, :, 0]).detach().numpy(),
+            ode_emission_means[i, :, 0].detach().numpy()
+            + 2 * torch.exp(0.5 * ode_emission_log_var[i, :, 0]).detach().numpy(),
+            alpha=0.2,
+            color="black",
+        )
+    if which_to_plot[3]:
+        plt.plot(predictions[i], label="ARI", color="red")
     plt.legend()
     plt.grid()
     plt.show()
