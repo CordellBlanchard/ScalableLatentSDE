@@ -1,4 +1,4 @@
-# CSC2541_Project
+# Scalable Neural Latent Stochastic Differential Equations
 
 ## How to run
 ```
